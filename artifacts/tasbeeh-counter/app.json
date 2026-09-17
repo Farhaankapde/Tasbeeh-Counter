@@ -7,17 +7,10 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tasbeeh-counter",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": false
-    },
-    "android": {},
-    "web": {
-      "favicon": "./assets/images/icon.png"
-    },
+    "ios": { "supportsTablet": true },
+    "android": { "adaptiveIcon": { "foregroundImage": "./assets/images/icon.png", "backgroundColor": "#0B0B0B" } },
+    "web": { "favicon": "./assets/images/icon.png" },
     "plugins": ["expo-router"],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+    "experiments": { "typedRoutes": true, "reactCompiler": true }
   }
 }

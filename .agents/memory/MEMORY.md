@@ -1,0 +1,1 @@
+- [Expo preview environment](expo-preview.md) — optional React Native DevTools may warn about missing libglib while the Expo preview remains healthy.
