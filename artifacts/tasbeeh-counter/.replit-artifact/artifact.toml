@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/tasbeeh-counter/"
+title = "Tasbeeh Counter"
+description = "A calm, premium digital Tasbeeh and Dhikr counter for Android. Count offline with tactile feedback, independent Dhikr counters, persistent progress, and focused settings."
+version = "1.0.0"
+id = "artifacts/tasbeeh-counter"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/tasbeeh-counter/" ]
+localPort = 21184
+
+[services.development]
+run = "pnpm --filter @workspace/tasbeeh-counter run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tasbeeh-counter", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/tasbeeh-counter", "run", "serve" ]
+
+[services.env]
+PORT = "21184"
+BASE_PATH = "/tasbeeh-counter/"
