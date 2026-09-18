@@ -11,7 +11,7 @@ import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getP
 import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
-const STORAGE_KEY = 'tasbeeh-counter-reference-preview-v1';
+const STORAGE_KEY = 'tasbeeh-counter-state-v1';
 const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
   { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
@@ -64,7 +64,7 @@ export default function HomeScreen() {
   const todayCount = stats.today;
   const weekCount = stats.thisWeek;
   const totalCount = stats.total;
-  const deviceWidth = Math.min(Math.max(width - 112, 240), 300);
+  const deviceWidth = compactCounter ? Math.min(Math.max(width - 112, 240), 250) : Math.min(Math.max(width - 112, 240), 330);
   const targetProgress = selectedTarget ? Math.min(currentCount / selectedTarget, 1) : 0;
   const animatedProgressWidth = progressAnimation.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
@@ -318,7 +318,7 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle={appState.theme === 'light' ? 'dark-content' : 'light-content'} />
-      {activeTab === 'counter' ? appState.dhikrs.length > 0 ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8 }]}>
+      {activeTab === 'counter' ? appState.dhikrs.length > 0 ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
         <CounterAtmosphere dark={appState.theme !== 'light'} />
          <View style={[styles.counterLayer, { flex: 1, minHeight: 0 }]}>
           <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><IconButton icon="menu" label="Open menu" onPress={() => setMenuOpen(true)} palette={palette} /><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, { color: palette.foreground }]}>Tasbeeh Counter</Text><Text style={[styles.counterSubtitle, { color: palette.muted }]}>Remember. Reflect. Repeat.</Text></View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
