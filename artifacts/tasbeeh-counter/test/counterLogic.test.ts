@@ -37,6 +37,7 @@ const DEFAULT_STATE: AppState = {
   autoSave: true,
   stopAtTarget: false,
   theme: 'dark',
+  accentTheme: 'red',
   history: [],
 };
 
@@ -64,6 +65,7 @@ test('a fresh install remains empty after an app restart and keeps the loading g
   assert.deepEqual(hydrated.history, []);
   assert.equal(hydrated.lifetimeCount, 0);
   assert.equal(hydrated.theme, 'dark');
+  assert.equal(hydrated.accentTheme, 'red');
   assert.equal(hydrated.vibration, true);
   assert.equal(hydrated.sound, true);
   assert.equal(hydrated.autoSave, true);
@@ -110,6 +112,7 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
     autoSave: false,
     stopAtTarget: true,
     theme: 'light',
+    accentTheme: 'blue',
     history: [matchedHistory, unmatchedHistory],
   };
 
@@ -125,6 +128,7 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
   assert.equal(migrated.autoSave, false);
   assert.equal(migrated.stopAtTarget, true);
   assert.equal(migrated.theme, 'light');
+  assert.equal(migrated.accentTheme, 'blue');
   assert.equal(migrated.lifetimeCount, stored.lifetimeCount);
   assert.deepEqual(migrated.dailyCounts, stored.dailyCounts);
   assert.deepEqual(migrated.dailyCountsByDhikr, stored.dailyCountsByDhikr);
@@ -162,6 +166,7 @@ test('a legacy six-Dhikr record survives an AsyncStorage-shaped app restart', as
     autoSave: false,
     stopAtTarget: true,
     theme: 'light',
+    accentTheme: 'green',
     history: [
       {
         id: 'history-matched',
@@ -191,6 +196,7 @@ test('a legacy six-Dhikr record survives an AsyncStorage-shaped app restart', as
   assert.equal(hydrated.autoSave, false);
   assert.equal(hydrated.stopAtTarget, true);
   assert.equal(hydrated.theme, 'light');
+  assert.equal(hydrated.accentTheme, 'green');
   assert.equal(hydrated.lifetimeCount, 500);
   assert.deepEqual(hydrated.history, [
     { ...stored.history[0], dhikrId: 'subhanallah' },

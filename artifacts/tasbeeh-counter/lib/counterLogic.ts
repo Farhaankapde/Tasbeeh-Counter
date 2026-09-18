@@ -1,4 +1,5 @@
 export type CountFeedback = 'target' | 'milestone' | 'tap';
+export type AccentTheme = 'red' | 'green' | 'blue';
 export type DhikrRecord = { id: string; name: string; arabic?: string; translation?: string; icon: string };
 export type HistoryEntry = { id: string; dhikr: string; dhikrId?: string; repetitions: number; time: string; date?: string };
 export type AppState = {
@@ -15,6 +16,7 @@ export type AppState = {
   autoSave: boolean;
   stopAtTarget: boolean;
   theme: 'dark' | 'light';
+  accentTheme: AccentTheme;
   history: HistoryEntry[];
 };
 
@@ -137,6 +139,7 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     autoSave: typeof parsed.autoSave === 'boolean' ? parsed.autoSave : defaults.autoSave,
     stopAtTarget: parsed.stopAtTarget === true,
     theme: parsed.theme === 'light' ? 'light' : 'dark',
+    accentTheme: parsed.accentTheme === 'green' || parsed.accentTheme === 'blue' ? parsed.accentTheme : 'red',
     history,
   };
 }

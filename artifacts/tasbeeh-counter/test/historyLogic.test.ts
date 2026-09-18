@@ -22,6 +22,7 @@ const DEFAULT_STATE: AppState = {
   autoSave: true,
   stopAtTarget: false,
   theme: 'dark',
+  accentTheme: 'red',
   history: [],
 };
 
