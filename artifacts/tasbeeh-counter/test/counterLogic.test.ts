@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  calculateStats,
+  canAcceptCount,
+  getCountFeedback,
+  migrateStoredState,
+  restoreStoredState,
+  shouldStopCounting,
+  type AppState,
+  type DhikrRecord,
+  type HistoryEntry,
+} from '../lib/counterLogic.ts';
+
+const LEGACY_DHIKRS: DhikrRecord[] = [
+  { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
+  { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
+  { id: 'allahu-akbar', name: 'Allahu Akbar', arabic: 'ٱللَّٰهُ أَكْبَرُ', icon: 'star-four-points' },
+  { id: 'la-ilaha', name: 'La ilaha illallah', arabic: 'لَا إِلَٰهَ إِلَّا ٱللَّٰهُ', icon: 'infinity' },
+  { id: 'astaghfirullah', name: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ ٱللَّٰهُ', icon: 'water-outline' },
+  { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
+];
+
+const DEFAULT_STATE: AppState = {
+  dhikrs: [],
+  selectedId: '',
+  counters: {},
+  targets: {},
+  dailyCounts: {},
+  dailyCountsByDhikr: {},
+  lifetimeCount: 0,
+  vibration: true,
+  sound: true,
+  counterAnimation: true,
+  autoSave: true,
+  stopAtTarget: false,
+  theme: 'dark',
+  history: [],
+};
+
+test('a fresh install restores the empty library instead of legacy Dhikrs', () => {
+  assert.deepEqual(restoreStoredState(null, DEFAULT_STATE, LEGACY_DHIKRS), DEFAULT_STATE);
+  assert.deepEqual(restoreStoredState(undefined, DEFAULT_STATE, LEGACY_DHIKRS), DEFAULT_STATE);
+});
+
+test('legacy six-Dhikr state preserves records, practice, selection, settings, history, and totals', () => {
+  const matchedHistory: HistoryEntry = {
+    id: 'history-matched',
+    dhikr: ' subhanallah ',
+    repetitions: 4,
+    time: '8:15 AM',
+    date: '2026-09-18',
+  };
+  const unmatchedHistory: HistoryEntry = {
+    id: 'history-unmatched',
+    dhikr: 'A Dhikr added elsewhere',
+    repetitions: 2,
+    time: '7:45 AM',
+  };
+  const stored = {
+    selectedId: 'astaghfirullah',
+    counters: {
+      subhanallah: 12,
+      alhamdulillah: 7,
+      'allahu-akbar': 3,
+      'la-ilaha': 1,
+      astaghfirullah: 9,
+      subhanallahi: 5,
+    },
+    targets: {
+      subhanallah: 33,
+      'allahu-akbar': null,
+      astaghfirullah: 99,
+    },
+    dailyCounts: { '2026-09-17': 5, '2026-09-18': 4 },
+    dailyCountsByDhikr: {
+      subhanallah: { '2026-09-18': 2 },
+    },
+    lifetimeCount: 500,
+    vibration: false,
+    sound: false,
+    counterAnimation: false,
+    autoSave: false,
+    stopAtTarget: true,
+    theme: 'light',
+    history: [matchedHistory, unmatchedHistory],
+  };
+
+  const migrated = migrateStoredState(stored, DEFAULT_STATE, LEGACY_DHIKRS);
+
+  assert.deepEqual(migrated.dhikrs, LEGACY_DHIKRS);
+  assert.deepEqual(migrated.counters, stored.counters);
+  assert.deepEqual(migrated.targets, stored.targets);
+  assert.equal(migrated.selectedId, stored.selectedId);
+  assert.equal(migrated.vibration, false);
+  assert.equal(migrated.sound, false);
+  assert.equal(migrated.counterAnimation, false);
+  assert.equal(migrated.autoSave, false);
+  assert.equal(migrated.stopAtTarget, true);
+  assert.equal(migrated.theme, 'light');
+  assert.equal(migrated.lifetimeCount, stored.lifetimeCount);
+  assert.deepEqual(migrated.dailyCounts, stored.dailyCounts);
+  assert.deepEqual(migrated.dailyCountsByDhikr, stored.dailyCountsByDhikr);
+  assert.deepEqual(migrated.history, [
+    { ...matchedHistory, dhikrId: 'subhanallah' },
+    unmatchedHistory,
+  ]);
+});
+
+test('migration keeps a current empty library empty', () => {
+  const migrated = migrateStoredState({ dhikrs: [], selectedId: 'missing' }, DEFAULT_STATE, LEGACY_DHIKRS);
+  assert.deepEqual(migrated.dhikrs, []);
+  assert.equal(migrated.selectedId, '');
+});
+
+test('legacy aggregate and new per-Dhikr daily totals combine exactly once', () => {
+  const date = new Date(2026, 8, 18, 12, 0, 0);
+  const stats = calculateStats(
+    {
+      '2026-09-12': 100,
+      '2026-09-17': 5,
+      '2026-09-18': 4,
+    },
+    321,
+    date,
+    {
+      subhanallah: { '2026-09-18': 2 },
+      alhamdulillah: { '2026-09-13': 3, '2026-09-19': 50 },
+    },
+  );
+
+  assert.deepEqual(stats, { today: 6, thisWeek: 14, total: 321 });
+});
+
+test('target feedback takes precedence over milestone feedback', () => {
+  assert.equal(getCountFeedback(33, 33), 'target');
+  assert.equal(getCountFeedback(99, 99), 'target');
+  assert.equal(getCountFeedback(100, null), 'milestone');
+  assert.equal(getCountFeedback(34, 33), 'tap');
+});
+
+test('counting waits for hydration, stops at a target, and honors maximum count', () => {
+  assert.equal(canAcceptCount(0, null, false, false), false);
+  assert.equal(canAcceptCount(0, null, false, true), true);
+  assert.equal(shouldStopCounting(10, 10, true), true);
+  assert.equal(canAcceptCount(10, 10, true, true), false);
+  assert.equal(canAcceptCount(10, 10, false, true), true);
+  assert.equal(canAcceptCount(999998, null, false, true), true);
+  assert.equal(canAcceptCount(999999, null, false, true), false);
+});

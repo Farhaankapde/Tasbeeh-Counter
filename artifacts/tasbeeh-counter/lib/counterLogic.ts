@@ -123,3 +123,9 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     history,
   };
 }
+
+export function restoreStoredState(value: unknown, defaults: AppState, legacyDhikrs: DhikrRecord[] = []): AppState {
+  return value === null || value === undefined
+    ? defaults
+    : migrateStoredState(value, defaults, legacyDhikrs);
+}

@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, migrateStoredState, type AppState, type DhikrRecord } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, restoreStoredState, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
@@ -86,8 +86,8 @@ export default function HomeScreen() {
     const hydrate = async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw && active) {
-          const migrated = migrateStoredState(JSON.parse(raw) as unknown, DEFAULT_STATE, LEGACY_DHIKRS);
+        if (active) {
+          const migrated = restoreStoredState(raw ? JSON.parse(raw) as unknown : null, DEFAULT_STATE, LEGACY_DHIKRS);
           appStateRef.current = migrated;
           savedPractice.current = getPracticeSnapshot(migrated);
           setAppState(migrated);
