@@ -324,7 +324,7 @@ export default function HomeScreen() {
           <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><IconButton icon="menu" label="Open menu" onPress={() => setMenuOpen(true)} palette={palette} /><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, { color: palette.foreground }]}>Tasbeeh Counter</Text><Text style={[styles.counterSubtitle, { color: palette.muted }]}>Remember. Reflect. Repeat.</Text></View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
          <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
           <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
-             <View style={[styles.selectorIcon, styles.referenceSelectorIcon, compactCounter && styles.referenceSelectorIconCompact, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={selectedDhikr.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={24} color={palette.primaryForeground} /></View>
+              <DhikrMark palette={palette} size={compactCounter ? 48 : 54} />
             <View style={styles.selectorCopy}><Text style={[styles.selectorName, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View>
             <Feather name="chevron-down" size={20} color={palette.foreground} />
           </Pressable>
@@ -396,6 +396,12 @@ function CounterAtmosphere({ dark }: { dark: boolean }) {
     {dark ? <Image source={require('../assets/images/tasbeeh-cinematic-background.png')} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#f1ece7', '#d8d0c8', '#efe9e4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
     <LinearGradient colors={dark ? ['rgba(5, 5, 5, 0.36)', 'rgba(5, 5, 5, 0.03)', 'rgba(5, 5, 5, 0.58)'] : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)', 'rgba(30,20,16,0.08)']} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} />
     <View style={[styles.atmosphereVignette, { borderColor: dark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(55, 39, 30, 0.08)' }]} />
+  </View>;
+}
+
+function DhikrMark({ palette, size = 42 }: { palette: Palette; size?: number }) {
+  return <View style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primary, borderWidth: 1, borderColor: palette.primaryBright, shadowColor: palette.primaryBright, shadowOpacity: 0.28, shadowRadius: Math.max(7, size * 0.18), shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
+    <Text style={{ color: palette.primaryForeground, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: size * 0.42, fontWeight: '700', includeFontPadding: false }}>الله</Text>
   </View>;
 }
 

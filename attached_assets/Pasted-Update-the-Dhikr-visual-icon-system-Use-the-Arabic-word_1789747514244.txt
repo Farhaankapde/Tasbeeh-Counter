@@ -1,0 +1,216 @@
+Update the Dhikr visual icon system.
+
+Use the Arabic word:
+
+الله
+
+as the PRIMARY and UNIVERSAL visual icon for ALL Dhikrs throughout the app.
+
+The "الله" symbol must be automatically associated with every Dhikr.
+
+This means:
+
+- Existing Dhikrs → display the الله symbol
+- Newly created Dhikrs → automatically display the same الله symbol
+- Edited Dhikrs → continue displaying the same الله symbol
+- Historical Dhikr entries → display the same الله symbol
+- Dhikrs with a target → display the same الله symbol
+- Dhikrs without a target → display the same الله symbol
+
+The user should NEVER have to select or upload an icon.
+
+There should be NO option to choose a different icon.
+
+========================================
+WHERE THE الله SYMBOL MUST APPEAR
+========================================
+
+Use the exact same visual Allah icon consistently in:
+
+1. Counter screen
+   - Dhikr selector
+   - The circular Dhikr icon next to the Dhikr name
+
+2. Dhikr Library
+   - Every Dhikr card/list item
+
+3. History
+   - Every historical Dhikr/session entry
+   - This includes Dhikrs that have since been deleted from the current library
+
+4. Stats
+   - Every Dhikr shown in "By Dhikr"
+
+5. Any other place in the app where a Dhikr identity/icon is displayed
+
+The same visual identity should follow the Dhikr everywhere.
+
+========================================
+NEW DHIKRS
+========================================
+
+IMPORTANT:
+
+Whenever the user creates a new Dhikr, automatically assign the same:
+
+الله
+
+visual symbol.
+
+For example:
+
+User creates:
+"Ya Rahman"
+
+The app automatically displays:
+
+[ الله ] Ya Rahman
+
+The user does NOT choose an icon.
+
+The user does NOT need to enter Arabic text.
+
+The user does NOT need to upload an image.
+
+Every newly created Dhikr automatically receives the same الله symbol.
+
+========================================
+VISUAL STYLE
+========================================
+
+Use a proper, elegant Arabic calligraphic treatment of:
+
+الله
+
+The symbol should be:
+
+- highly legible
+- elegant
+- premium
+- centered
+- white/light in color
+- displayed inside the existing red circular icon treatment
+
+The red circular icon should remain consistent across the application.
+
+Do not use different symbols for different Dhikrs.
+
+Do not use:
+- target icons
+- generic crosshair icons
+- bookmark icons
+- different icons per Dhikr
+- emoji
+- user-selected icons
+
+The Arabic Allah mark is the universal Dhikr identity.
+
+========================================
+CONSISTENCY
+========================================
+
+The same icon design should be used everywhere.
+
+Do not create slightly different versions for:
+- Counter
+- Dhikr Library
+- History
+- Stats
+
+Use one consistent visual component/style so that the symbol looks identical throughout the app.
+
+Only scale the component appropriately depending on the screen.
+
+For example:
+
+Counter:
+larger icon
+
+Dhikr Library:
+medium icon
+
+History:
+smaller icon
+
+Stats:
+smaller icon
+
+But the actual الله visual identity must remain the same.
+
+========================================
+IMPORTANT DATA RULE
+========================================
+
+This is primarily a visual/icon system.
+
+Do NOT change the user's Dhikr data.
+
+Do NOT change:
+- Dhikr names
+- targets
+- counts
+- counting behavior
+- History data
+- Stats calculations
+- storage
+- navigation
+- Counter behavior
+- target logic
+- sound
+- vibration
+
+Do not delete or migrate existing Dhikr data unnecessarily.
+
+The icon can be represented as a shared/default visual rather than requiring a separate user-specific icon field.
+
+========================================
+FRESH INSTALL
+========================================
+
+Fresh installations must remain empty.
+
+Do NOT add default Dhikrs.
+
+The الله symbol should only appear when a Dhikr exists.
+
+When the user creates their first Dhikr, it automatically receives the الله symbol.
+
+========================================
+FINAL CHECK
+========================================
+
+Test the following:
+
+1. Create a new Dhikr.
+   → Verify it automatically displays الله.
+
+2. Create another Dhikr.
+   → Verify it also displays the exact same الله symbol.
+
+3. Switch between Dhikrs on Counter.
+   → Verify the symbol remains consistent.
+
+4. Check Dhikr Library.
+   → Verify every Dhikr has the same الله symbol.
+
+5. Count and create History.
+   → Verify History displays the same الله symbol.
+
+6. Check Stats → By Dhikr.
+   → Verify the same الله symbol appears.
+
+7. Delete a Dhikr.
+   → Verify its historical entries still display the الله symbol.
+
+8. Restart the app.
+   → Verify the symbols remain consistent.
+
+9. Test on Android and iOS.
+
+Do not change any core functionality.
+
+The goal is for:
+
+الله
+
+to become the universal visual identity of Dhikr throughout the entire application.
