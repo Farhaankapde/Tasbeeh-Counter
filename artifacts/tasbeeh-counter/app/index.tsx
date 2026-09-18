@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { AppState as NativeAppState, Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord, type PracticeSnapshot } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
@@ -54,7 +54,6 @@ export default function HomeScreen() {
   const tapSound = useRef<Audio.Sound | null>(null);
   const completionSound = useRef<Audio.Sound | null>(null);
   const webAudio = useRef<AudioContext | null>(null);
-  const savedPractice = useRef<PracticeSnapshot>(getPracticeSnapshot(DEFAULT_STATE));
   const storageWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const feedbackTriggered = useRef(new Set<string>());
   const activeHistorySessionId = useRef<string | null>(null);
@@ -75,6 +74,7 @@ export default function HomeScreen() {
     const next = updater(appStateRef.current);
     appStateRef.current = next;
     setAppState(next);
+    if (hydrated) void queuePersist(next);
     return next;
   };
 
@@ -93,7 +93,6 @@ export default function HomeScreen() {
         if (active) {
           const migrated = restoreStoredState(raw ? JSON.parse(raw) as unknown : null, DEFAULT_STATE, LEGACY_DHIKRS);
           appStateRef.current = migrated;
-          savedPractice.current = getPracticeSnapshot(migrated);
           setAppState(migrated);
         }
       } catch {
@@ -105,6 +104,17 @@ export default function HomeScreen() {
     void hydrate();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const persistWhenInactive = (nextState: string) => {
+      if (hydrated && (nextState === 'background' || nextState === 'inactive')) void queuePersist(appStateRef.current);
+    };
+    const subscription = NativeAppState.addEventListener('change', persistWhenInactive);
+    return () => {
+      subscription.remove();
+      if (hydrated) void queuePersist(appStateRef.current);
+    };
+  }, [hydrated]);
 
   useEffect(() => {
     let active = true;
@@ -151,12 +161,6 @@ export default function HomeScreen() {
     void preloadCounterAssets();
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (appState.autoSave) savedPractice.current = getPracticeSnapshot(appState);
-    void queuePersist(getStateForPersistence(appState, savedPractice.current));
-  }, [appState, hydrated]);
 
   useEffect(() => {
     Animated.timing(progressAnimation, {
@@ -511,8 +515,6 @@ function SettingsModal({ visible, appState, palette, topInset, bottomInset, onCl
           <SettingRow icon="volume-2" label="Sound" value={appState.sound} onValueChange={(value) => onChange('sound', value)} palette={palette} feather />
           <SettingDivider palette={palette} />
           <SettingRow icon="activity" label="Counter animation" value={appState.counterAnimation} onValueChange={(value) => onChange('counterAnimation', value)} palette={palette} feather />
-          <SettingDivider palette={palette} />
-          <SettingRow icon="save" label="Auto-save" value={appState.autoSave} onValueChange={(value) => onChange('autoSave', value)} palette={palette} feather />
           <SettingDivider palette={palette} />
           <SettingRow icon="flag" label="Stop counting at target" value={appState.stopAtTarget} onValueChange={(value) => onChange('stopAtTarget', value)} palette={palette} feather />
         </SettingsSection>

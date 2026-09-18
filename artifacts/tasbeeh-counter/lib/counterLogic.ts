@@ -35,8 +35,7 @@ export function getPracticeSnapshot(state: AppState): PracticeSnapshot {
 }
 
 export function getStateForPersistence(state: AppState, savedPractice: PracticeSnapshot): AppState {
-  const practice = state.autoSave ? getPracticeSnapshot(state) : savedPractice;
-  return { ...state, ...practice };
+  return { ...state, autoSave: true, ...getPracticeSnapshot(state) };
 }
 
 export function shouldStopCounting(count: number, target: number | null, stopAtTarget: boolean) {
@@ -136,7 +135,7 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     vibration: typeof parsed.vibration === 'boolean' ? parsed.vibration : defaults.vibration,
     sound: typeof parsed.sound === 'boolean' ? parsed.sound : defaults.sound,
     counterAnimation: typeof parsed.counterAnimation === 'boolean' ? parsed.counterAnimation : defaults.counterAnimation,
-    autoSave: typeof parsed.autoSave === 'boolean' ? parsed.autoSave : defaults.autoSave,
+    autoSave: true,
     stopAtTarget: parsed.stopAtTarget === true,
     theme: parsed.theme === 'light' ? 'light' : 'dark',
     accentTheme: parsed.accentTheme === 'green' || parsed.accentTheme === 'blue' ? parsed.accentTheme : 'red',
