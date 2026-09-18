@@ -1,0 +1,99 @@
+Use the current version of the app as the starting point. Do NOT rebuild it.
+
+The physical red Tasbeeh counter is now much closer to the reference. Keep that improvement.
+
+Now make the following refinements.
+
+## 1. DO NOT MAKE THE COUNTER TALLER
+
+The current physical counter has a good size and appearance.
+
+Keep approximately this size and visual style.
+
+Do NOT enlarge the counter vertically so much that it pushes the rest of the interface off-screen.
+
+The goal is to fit the COMPLETE Counter screen into a normal phone viewport.
+
+## 2. FIX THE HEADER
+
+The current header has a serious issue: the phone notch is overlapping the greeting.
+
+Move the header content down using proper safe-area/top padding.
+
+It should look like:
+
+☰                 Assalamu Alaikum,                 ⚙
+Farhaan
+
+"Assalamu Alaikum," should be completely visible.
+
+"Farhaan" should be clearly visible underneath it.
+
+Nothing should be hidden behind the camera/notch.
+
+## 3. DHIKR SELECTOR
+
+Keep the current selector, but make it slightly more compact vertically so we can recover some screen space.
+
+It should still look like a premium pill:
+
+[ red icon ]   Alhamdulillah                         ▼
+
+The selected Dhikr should remain dynamic.
+
+## 4. PHYSICAL COUNTER
+
+Keep the current red physical-counter design.
+
+However, add back the visual details from the original reference:
+
+At the top of the counter, above the LCD:
+
+"KMA Digital"
+
+This is currently missing.
+
+Add it in a white/metallic serif style.
+
+The LCD should contain:
+
+* pale green/gray LCD background
+* realistic 7-segment display
+* large current count
+* faint inactive segments behind active segments
+
+The physical counter should have:
+
+* red outer body
+* black display panel
+* large silver counting button
+* small silver reset button on the side
+* subtle metallic reflections
+* realistic depth/shadows
+
+The large silver button must remain the primary physical counting button.
+
+## 5. IMPORTANT: RESTORE THE COUNT / RESET LABELS
+
+Immediately underneath the LCD, inside the physical counter, add:
+
+COUNT                         RESET
+
+These should look like printed labels on the physical device.
+
+They should NOT take up excessive space.
+
+## 6. STATISTICS
+
+Keep the three cards underneath the counter:
+
+TODAY
+14
+
+THIS WEEK
+508
+
+TOTAL
+508
+
+These values should remain dynamically connected to the a

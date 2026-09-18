@@ -1,0 +1,108 @@
+I want you to significantly improve the existing Tasbeeh Counter app UI.
+
+IMPORTANT:
+Do NOT rebuild the application from scratch.
+Do NOT remove or break any existing functionality.
+Do NOT simplify the interface.
+Keep the existing counting logic, navigation, state, and functionality working.
+
+I have provided a reference screenshot showing the exact visual direction I want. Treat the reference screenshot as the PRIMARY UI DESIGN REFERENCE.
+
+The current generated UI is too small, too flat, and does not closely resemble the reference.
+
+Your task is to make the current app visually match the reference as closely as reasonably possible.
+
+## 1. OVERALL DESIGN
+
+Use a premium, realistic digital Tasbeeh counter aesthetic.
+
+The main visual characteristics should be:
+
+* Full-screen dark/black background
+* Very subtle textured/grainy background if possible
+* Red + black + metallic silver color palette
+* Strong visual hierarchy
+* Large physical-looking Tasbeeh counter in the center
+* Soft shadows
+* Subtle highlights
+* Rounded corners
+* Premium modern Islamic utility-app appearance
+* Avoid excessive gradients or cartoon-like effects
+* Avoid making the interface look like a generic dashboard
+
+The counter should be the dominant visual element on the screen.
+
+## 2. HEADER
+
+At the top:
+
+Left:
+
+* Hamburger menu icon
+
+Center:
+
+* Small text: "Assalamu Alaikum,"
+* Large bold text underneath: "Farhaan"
+
+Right:
+
+* Settings gear icon
+
+The greeting should be clearly visible and properly centered.
+
+Do not allow the phone's notch/safe area to overlap the text.
+
+Use appropriate safe-area padding.
+
+## 3. DHIKR SELECTOR
+
+Immediately below the header, create a large horizontal pill-shaped selector.
+
+It should contain:
+
+* Circular red icon on the left
+* Selected dhikr name:
+  "SubhanAllah"
+* Down-chevron on the right
+
+Example:
+
+[ red circular Islamic icon ]   SubhanAllah                         ▼
+
+The selector should have:
+
+* Dark black/charcoal background
+* Rounded pill shape
+* Subtle border
+* Soft shadow
+* Comfortable horizontal padding
+* Height similar to the reference
+
+When tapped, it should still open/change the available dhikr selection.
+
+Do not break the existing dhikr functionality.
+
+## 4. MAIN TASBEEH COUNTER
+
+THIS IS THE MOST IMPORTANT PART.
+
+Make the physical counter MUCH larger than the current implementation.
+
+It should visually resemble a real handheld digital tasbeeh counter.
+
+Create a large red rounded counter body.
+
+Characteristics:
+
+* Bright/deep red outer shell
+* Large rounded organic shape
+* Black inner panel
+* Subtle red highlights
+* Realistic depth
+* Soft shadow
+* Metallic silver elements
+
+The counter should occupy most of the central screen.
+
+Do not make it look like a simple r
