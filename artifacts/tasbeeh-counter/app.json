@@ -7,10 +7,26 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tasbeeh-counter",
     "userInterfaceStyle": "automatic",
-    "ios": { "supportsTablet": true },
-    "android": { "package": "com.farhaankapde.tasbeehcounter", "adaptiveIcon": { "foregroundImage": "./assets/images/icon.png", "backgroundColor": "#0B0B0B" } },
-    "web": { "favicon": "./assets/images/icon.png" },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true, "reactCompiler": true }
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.farhaankapde.tasbeehcounter",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0B0B0B"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-audio"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }
