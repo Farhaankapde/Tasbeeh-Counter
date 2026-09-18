@@ -12,6 +12,8 @@ import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
+const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.png');
+const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
 const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
   { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
@@ -32,6 +34,7 @@ export default function HomeScreen() {
   const compactCounter = height < 800;
   const [appState, setAppState] = useState<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
+  const [counterAssetsReady, setCounterAssetsReady] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('counter');
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -128,6 +131,25 @@ export default function HomeScreen() {
       if (tapSound.current) void tapSound.current.unloadAsync();
       if (completionSound.current) void completionSound.current.unloadAsync();
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const preloadCounterAssets = async () => {
+      const uris = [COUNTER_IMAGE, CINEMATIC_BACKGROUND]
+        .map((source) => {
+          try {
+            return Image.resolveAssetSource(source)?.uri;
+          } catch {
+            return null;
+          }
+        })
+        .filter((uri): uri is string => Boolean(uri));
+      await Promise.all(uris.map((uri) => Image.prefetch(uri).catch(() => false)));
+      if (active) setCounterAssetsReady(true);
+    };
+    void preloadCounterAssets();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -334,7 +356,7 @@ export default function HomeScreen() {
            </View> : null}
            {selectedTarget ? <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><Animated.View style={[styles.selectorProgress, { width: animatedProgressWidth, backgroundColor: completionFlash ? palette.primaryBright : palette.primary, shadowColor: palette.primaryBright }]} /></View> : null}
         </View>
-         <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={styles.deviceContactShadow} /><HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /></View>
+          <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={styles.deviceContactShadow} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
          <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
          <View style={[styles.referenceActions, compactCounter && styles.referenceActionsCompact, { gap: 8 }]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.resetAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, borderColor: palette.border, backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(20, 20, 20, 0.82)' }, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.foreground} /><Text style={[styles.referenceActionText, { color: palette.foreground }]}>Reset</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Save count now" onPress={saveNow} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.saveAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, backgroundColor: savedFlash ? palette.primaryBright : palette.primary, borderColor: palette.primaryBright }, p && styles.pressed]}><Feather name={savedFlash ? 'check' : 'save'} size={20} color={palette.primaryForeground} /><Text style={[styles.referenceActionText, { color: palette.primaryForeground }]}>{savedFlash ? 'Saved' : 'Save'}</Text></Pressable></View>
          </View>
