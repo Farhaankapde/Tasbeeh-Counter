@@ -47,7 +47,7 @@ export default function HomeScreen() {
   const selectedDhikr = useMemo(() => DEFAULT_DHIKR.find((item) => item.id === appState.selectedId) ?? DEFAULT_DHIKR[0], [appState.selectedId]);
   const currentCount = appState.counters[selectedDhikr.id] ?? 0;
   const totalCount = Object.values(appState.counters).reduce((sum, value) => sum + value, 0);
-  const deviceWidth = Math.min(Math.max(width - 34, 300), 380);
+  const deviceWidth = Math.min(Math.max((width - 34) * 1.08, 320), 400);
   const goal = 1000;
   const progress = Math.min(currentCount / goal, 1);
 
@@ -141,12 +141,11 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={[palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle="light-content" />
-      {activeTab === 'counter' ? <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: 104 + Math.max(insets.bottom, 14) }]}>
+      {activeTab === 'counter' ? <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24, paddingBottom: 104 + Math.max(insets.bottom, 14) }]}>
         <View style={styles.topBar}><IconButton icon="menu" label="Open menu" onPress={() => setMenuOpen(true)} palette={palette} /><View style={styles.greeting}><Text style={[styles.eyebrow, { color: palette.muted }]}>Assalamu Alaikum,</Text><Text style={[styles.greetingName, { color: palette.foreground }]}>Farhaan</Text></View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
         <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selector, { backgroundColor: palette.card, borderColor: palette.border, opacity: selectorPressed ? 0.82 : 1 }]}><View style={[styles.selectorIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={selectedDhikr.icon} size={24} color={palette.primaryForeground} /></View><View style={styles.selectorCopy}><Text style={[styles.selectorName, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View><Feather name="chevron-down" size={22} color={palette.foreground} /></Pressable>
          <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} />
          <View style={[styles.actionBar, { backgroundColor: palette.card, borderColor: palette.border }]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.actionItem, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.muted} /><Text style={[styles.actionText, { color: palette.foreground }]}>RESET</Text></Pressable><View style={[styles.actionDivider, { backgroundColor: palette.border }]} /><Pressable accessibilityRole="button" accessibilityLabel="Save count now" onPress={saveNow} style={({ pressed: p }) => [styles.actionItem, p && styles.pressed]}><Feather name={savedFlash ? 'check' : 'save'} size={20} color={savedFlash ? palette.primaryBright : palette.muted} /><Text style={[styles.actionText, { color: palette.foreground }]}>{savedFlash ? 'SAVED' : 'SAVE'}</Text></Pressable></View>
-        <Text style={[styles.offlineNote, { color: palette.muted }]}>{savedFlash ? 'Your progress is saved' : 'Your count is saved on this device'}</Text>
       </ScrollView> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} totalCount={totalCount} onChooseDhikr={chooseDhikr} />}
       <TabBar activeTab={activeTab} palette={palette} onChange={setActiveTab} bottomInset={insets.bottom} />
 
@@ -164,7 +163,7 @@ export default function HomeScreen() {
 function HardwareCounter({ count, width, palette, scale, pressed, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   return <View style={[styles.hardware, { width, height: width * 1.38, shadowColor: palette.shadow }]}>
-    <Image source={require('../assets/images/realistic-counter-smaller-dial-cropped.png')} resizeMode="contain" style={styles.hardwareImage} />
+    <Image source={require('../assets/images/realistic-counter-polished.png')} resizeMode="contain" style={styles.hardwareImage} />
     <View style={styles.liveDisplay}>
       <Text style={styles.ghostDigits}>888</Text>
       <Animated.Text style={[styles.hardwareDigits, { transform: [{ scale }] }]}>{display}</Animated.Text>
