@@ -1,0 +1,187 @@
+Update ONLY the History screen.
+
+The current History screen shows many repeated rows for the same Dhikr, for example multiple Alhamdulillah and Allahuakbar entries. These are separate sessions, so they are not technically duplicate data, but the current presentation is cluttered.
+
+Change the History UI to use a GROUPED HISTORY overview.
+
+IMPORTANT:
+Do NOT delete or merge the underlying individual history sessions.
+Keep all session data intact.
+
+HISTORY PURPOSE:
+History = recent past counting sessions.
+Stats = aggregated totals.
+
+----------------------------------------
+GROUPED HISTORY
+----------------------------------------
+
+Group History entries by Dhikr for the overview.
+
+Example:
+
+History
+Your recent remembrance sessions
+
+TODAY
+
+Allahuakbar
+41 repetitions
+2 sessions • Latest 8:10 PM
+
+Alhamdulillah
+58 repetitions
+2 sessions • Latest 7:45 PM
+
+Subhanallah
+37 repetitions
+2 sessions • Latest 7:43 PM
+
+Bismillah
+11 repetitions
+1 session • Latest 7:25 PM
+
+The grouped total shown on the overview should represent the SUM of the sessions included in that group/date period, NOT the lifetime total.
+
+Do not present this as the Dhikr's lifetime total.
+
+----------------------------------------
+SESSION DETAILS
+----------------------------------------
+
+When the user taps a grouped Dhikr entry, show its individual sessions.
+
+Example:
+
+Alhamdulillah
+
+33 repetitions
+18 Sep 2026 • 7:45 PM
+
+25 repetitions
+18 Sep 2026 • 7:06 PM
+
+189 repetitions
+18 Sep 2026 • 6:48 PM
+
+1,810 repetitions
+Previous session
+
+Keep the individual session records separate.
+
+Do not permanently merge them.
+
+----------------------------------------
+DATE GROUPING
+----------------------------------------
+
+If practical, group the History overview by date:
+
+TODAY
+YESTERDAY
+EARLIER
+
+Within each date, group sessions by Dhikr.
+
+If there is only one session for a Dhikr, simply show:
+
+Bismillah
+11 repetitions
+7:25 PM
+
+If there are multiple sessions:
+
+Alhamdulillah
+58 repetitions
+2 sessions • Latest 7:45 PM
+
+----------------------------------------
+LEGACY DATA
+----------------------------------------
+
+Some old migrated History entries may not have a stored date/time.
+
+Do NOT invent a date or time.
+
+For an entry with no reliable date, display:
+
+Previous session
+
+or another clear neutral label.
+
+Do not fabricate timestamps.
+
+Preserve the legacy session and its count.
+
+----------------------------------------
+DELETED DHIKRS
+----------------------------------------
+
+Deleting a Dhikr from the current Dhikr library must NOT delete its History.
+
+Historical sessions must remain available.
+
+If a historical Dhikr no longer exists in the current library, it can still appear in History.
+
+----------------------------------------
+UI
+----------------------------------------
+
+Make the History screen cleaner than the current version.
+
+Avoid displaying many repeated large cards for the same Dhikr.
+
+Use:
+- clear date grouping
+- compact Dhikr rows/cards
+- strong Dhikr name
+- clear repetition count
+- session count where applicable
+- latest session time
+- comfortable touch targets
+
+Use the existing dark theme and red accent.
+
+Keep the design premium and minimal.
+
+Do NOT perform the full cinematic/3D redesign yet.
+
+Keep bottom navigation unchanged.
+
+----------------------------------------
+DATA SAFETY
+----------------------------------------
+
+Do not change:
+- Counter logic
+- Stats calculations
+- Dhikr library
+- Targets
+- Sound
+- Vibration
+- Settings
+- Local storage architecture
+
+Do not delete existing history data.
+
+Only change how History is displayed and how the user can drill into individual sessions.
+
+----------------------------------------
+TESTING
+----------------------------------------
+
+Test:
+
+1. One session for a Dhikr.
+2. Multiple sessions for the same Dhikr.
+3. Multiple different Dhikrs.
+4. Verify repeated Dhikr names are grouped in the overview.
+5. Verify individual sessions remain separate in the detail view.
+6. Verify session counts and repetition totals are correct.
+7. Verify dates/times are correct when available.
+8. Verify legacy entries without dates do not get fabricated dates.
+9. Delete a Dhikr and verify its History remains.
+10. Verify empty History state.
+11. Verify no existing History data is lost.
+
+After implementation, report exactly which files were changed.

@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type PracticeSnapshot } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type HistoryEntry, type PracticeSnapshot } from '@/lib/counterLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
@@ -379,6 +379,30 @@ function formatHistoryDate(date?: string) {
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(year, month - 1, day));
 }
 
+type HistoryGroup = { key: string; dateKey?: string; dhikr: string; entries: HistoryEntry[] };
+
+function getHistoryDateSection(date?: string) {
+  if (!date) return 'EARLIER';
+  const today = getLocalDateKey();
+  if (date === today) return 'TODAY';
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  return date === getLocalDateKey(yesterdayDate) ? 'YESTERDAY' : 'EARLIER';
+}
+
+function groupHistoryEntries(history: HistoryEntry[], dhikrs: DhikrRecord[]) {
+  const groups = new Map<string, HistoryGroup>();
+  history.forEach((entry) => {
+    const currentName = dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr;
+    const identity = entry.dhikrId ?? `name:${entry.dhikr.trim().toLocaleLowerCase()}`;
+    const key = `${entry.date ?? 'previous'}:${identity}`;
+    const existing = groups.get(key);
+    if (existing) existing.entries.push(entry);
+    else groups.set(key, { key, dateKey: entry.date, dhikr: currentName, entries: [entry] });
+  });
+  return Array.from(groups.values());
+}
+
 function lifetimeTotalForDhikr(appState: AppState, id: string) {
   const dailyEntries = appState.dailyCountsByDhikr[id];
   if (dailyEntries && Object.keys(dailyEntries).length > 0) {
@@ -387,12 +411,40 @@ function lifetimeTotalForDhikr(appState: AppState, id: string) {
   return appState.history.reduce((sum, entry) => entry.dhikrId === id ? sum + entry.repetitions : sum, 0);
 }
 
+function HistorySection({ appState, palette }: { appState: AppState; palette: Palette }) {
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const groups = groupHistoryEntries(appState.history, appState.dhikrs);
+  const selectedGroup = groups.find((group) => group.key === selectedGroupKey);
+  const sectionOrder = ['TODAY', 'YESTERDAY', 'EARLIER'];
+  if (appState.history.length === 0) return <EmptyPanel icon="clock" title="No practice history yet" body="Your counting sessions will appear here." palette={palette} />;
+  if (selectedGroup) {
+    return <View>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back to History overview" onPress={() => setSelectedGroupKey(null)} style={styles.historyBack}><Feather name="chevron-left" size={18} color={palette.primaryBright} /><Text style={[styles.historyBackText, { color: palette.primaryBright }]}>History overview</Text></Pressable>
+      <View style={styles.historyDetailHeading}><Text style={[styles.historyDetailTitle, { color: palette.foreground }]}>{selectedGroup.dhikр}</Text><Text style={[styles.historyDetailSubtitle, { color: palette.muted }]}>Individual sessions kept separate</Text></View>
+      {selectedGroup.entries.map((entry) => <View key={entry.id} style={[styles.historySessionRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={styles.historyCopy}><Text style={[styles.historySessionCount, { color: palette.foreground }]}>{entry.repetitions.toLocaleString()} repetitions</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${formatHistoryDate(entry.date)}${entry.time ? ` • ${entry.time}` : ''}` : 'Previous session'}</Text></View></View>)}
+    </View>;
+  }
+  return <View>{sectionOrder.map((section) => {
+    const sectionGroups = groups.filter((group) => getHistoryDateSection(group.dateKey) === section);
+    if (sectionGroups.length === 0) return null;
+    return <View key={section} style={styles.historyDateSection}><Text style={[styles.historyDateLabel, { color: palette.primaryBright }]}>{section}</Text>{sectionGroups.map((group) => {
+      const total = group.entries.reduce((sum, entry) => sum + entry.repetitions, 0);
+      const latest = group.entries[0];
+      const dateNote = section === 'EARLIER' && group.dateKey ? formatHistoryDate(group.dateKey) : undefined;
+      const sessionNote = group.entries.length > 1
+        ? `${group.entries.length} sessions • ${group.dateKey ? `Latest ${latest.time}` : 'Previous session'}`
+        : group.dateKey ? latest.time : 'Previous session';
+      return <Pressable key={group.key} accessibilityRole="button" accessibilityLabel={`View ${group.dhikr} sessions`} onPress={() => setSelectedGroupKey(group.key)} style={({ pressed }) => [styles.historyGroupRow, { backgroundColor: palette.card, borderColor: palette.border, opacity: pressed ? 0.78 : 1 }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyGroupCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{group.dhikr}</Text><Text style={[styles.historySummary, { color: palette.primaryBright }]}>{total.toLocaleString()} repetitions</Text><Text style={[styles.historyLatest, { color: palette.muted }]}>{dateNote ? `${dateNote} • ` : ''}{sessionNote}</Text></View><Feather name="chevron-right" size={18} color={palette.muted} /></Pressable>;
+    })}</View>;
+  })}</View>;
+}
+
 function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCount, onChooseDhikr, onAddDhikr, onEditDhikr, onDeleteDhikr }: { tab: Tab; palette: Palette; appState: AppState; todayCount: number; weekCount: number; totalCount: number; onChooseDhikr: (id: string) => void; onAddDhikr: () => void; onEditDhikr: (item: DhikrRecord) => void; onDeleteDhikr: (id: string) => void }) {
   const insets = useSafeAreaInsets();
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikr Library';
   return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: insets.top + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
     <View style={styles.secondaryHeader}><Text style={[styles.secondaryTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.secondarySubtitle, { color: palette.muted }]}>{tab === 'history' ? 'Your recent remembrance sessions' : tab === 'stats' ? 'A quiet view of your progress' : 'Choose a remembrance to continue'}</Text></View>
-    {tab === 'history' ? <View>{appState.history.length === 0 ? <EmptyPanel icon="clock" title="No practice history yet" body="Your counting sessions will appear here." palette={palette} /> : appState.history.map((entry) => <View key={entry.id} style={[styles.historyRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{appState.dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${formatHistoryDate(entry.date)} • ${entry.time}` : entry.time}</Text></View><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{entry.repetitions.toLocaleString()} repetitions</Text></View>)}</View>
+    {tab === 'history' ? <HistorySection appState={appState} palette={palette} />
       : tab === 'stats' ? <View>
         <View style={styles.statsGrid}><MetricCard icon="calendar-today" label="Today" value={todayCount} palette={palette} /><MetricCard icon="calendar-week" label="This Week" value={weekCount} palette={palette} /><MetricCard icon="chart-bar" label="All Time" value={totalCount} palette={palette} /></View>
         <View style={[styles.byDhikrPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Text style={[styles.byDhikrTitle, { color: palette.foreground }]}>By Dhikr</Text>{appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="No Dhikrs yet" body="Add a Dhikr to see lifetime totals by remembrance." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} style={[styles.byDhikrRow, { borderBottomColor: palette.border }]}><Text style={[styles.byDhikrName, { color: palette.foreground }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.byDhikrValue, { color: palette.primaryBright }]}>{lifetimeTotalForDhikr(appState, item.id).toLocaleString()}</Text></View>)}</View>
