@@ -1,0 +1,513 @@
+I am providing a reference image for the Dhikr Library screen.
+
+IMPORTANT:
+Use the attached image as the PRIMARY VISUAL REFERENCE.
+
+I want our Dhikr Library screen to closely reproduce the visual style, composition, atmosphere, spacing, lighting, typography, and component hierarchy shown in the reference.
+
+Do NOT make a generic interpretation of the image.
+
+Do NOT add features that are not present in the reference.
+
+The reference is a DESIGN REFERENCE, while our existing app functionality remains the source of truth.
+
+========================================
+OVERALL VISUAL STYLE
+========================================
+
+Create a luxurious, cinematic Islamic-themed Dhikr Library.
+
+The screen should feel:
+
+- elegant
+- peaceful
+- premium
+- cinematic
+- spiritual
+- sophisticated
+- dark
+- warm
+- immersive
+
+Use a predominantly:
+
+- near-black background
+- deep brown/black tones
+- warm amber lighting
+- subtle red accent
+- cream/white typography
+
+The visual atmosphere should resemble a premium Islamic product/app experience.
+
+========================================
+IMPORTANT: NO OUTER PHONE BORDER
+========================================
+
+The supplied reference image is ONLY the UI screen.
+
+Do NOT recreate:
+- phone frame
+- phone bezel
+- outer device border
+- mockup frame
+
+The generated/design screen should be the application UI itself.
+
+The app must occupy the complete screen.
+
+========================================
+BACKGROUND
+========================================
+
+Use a cinematic dark Islamic environment similar to the reference.
+
+The background can contain extremely subtle atmospheric elements such as:
+
+- warm lantern light
+- dark mosque architecture
+- subtle arch patterns
+- crescent moon
+- subtle stars
+- dark Quran/book texture
+
+These elements must remain in the BACKGROUND.
+
+They should be softly blurred/subdued so the Dhikr list remains the primary focus.
+
+Do NOT make the background look like a busy wallpaper.
+
+Use depth-of-field and warm ambient lighting.
+
+========================================
+HEADER
+========================================
+
+At the top:
+
+Dhikrs
+
+Large elegant title.
+
+Below it:
+
+Add, manage and remember.
+Keep your heart connected.
+
+Use refined typography.
+
+The title should be prominent but not oversized.
+
+The header should have generous breathing room.
+
+Respect the phone safe area.
+
+Nothing should overlap the status bar/notch.
+
+========================================
+ADD DHIKR BUTTON
+========================================
+
+Place a prominent red:
+
++ Add Dhikr
+
+button near the upper portion of the screen.
+
+It should look premium.
+
+Use:
+
+- deep red
+- subtle red glow
+- soft shadow
+- rounded pill shape
+- clean plus icon
+- elegant typography
+
+It should look like a primary action, not a generic HTML button.
+
+Keep the existing Add Dhikr functionality.
+
+========================================
+REMOVE FAVOURITES / RECENT
+========================================
+
+IMPORTANT:
+
+Do NOT include:
+
+- Favourites
+- Recent
+- All Dhikrs tabs
+- heart icons
+- favourite functionality
+- recent filters
+
+There should be NO tab/filter row below the Add Dhikr button.
+
+The Dhikr Library should go directly from:
+
+Header
+↓
+Add Dhikr
+↓
+Dhikr list
+
+Keep the screen simple.
+
+========================================
+DHIKR LIST
+========================================
+
+This is the main content.
+
+Each Dhikr should be displayed as a premium dark rounded card/list item.
+
+Example:
+
+┌────────────────────────────────────┐
+│  الله     Subhanallah             › │
+│           Target: 33                │
+└────────────────────────────────────┘
+
+Each item should contain:
+
+LEFT:
+A circular red icon containing:
+
+الله
+
+Use an elegant Arabic calligraphic treatment.
+
+The Arabic Allah mark should be white/light.
+
+This same Allah icon must be used consistently for every Dhikr.
+
+CENTER:
+Dhikr name
+
+Below it:
+
+Target: 33
+
+If there is NO target:
+
+Target: Not set
+
+Do NOT show Arabic text or translation fields.
+
+RIGHT:
+A subtle chevron/arrow indicating the item can be opened/selected.
+
+Do NOT use heart icons.
+
+Do NOT use favourite icons.
+
+Do NOT use generic target icons.
+
+========================================
+DHIKR CARD STYLE
+========================================
+
+The cards should resemble the reference.
+
+Use:
+
+- dark charcoal/black translucent surface
+- subtle border
+- soft shadow
+- slight red ambient glow
+- large rounded corners
+- generous internal spacing
+- premium typography
+
+The red glow should be subtle.
+
+Do NOT put a bright red border around every card.
+
+The cards should feel like dark glass/metal surfaces illuminated by the environment.
+
+========================================
+DHIKR CARD INTERACTION
+========================================
+
+The entire Dhikr card should be tappable.
+
+Tapping a Dhikr should preserve the existing behavior of selecting/opening that Dhikr.
+
+Keep existing functionality.
+
+Edit and delete functionality must remain available.
+
+However, do NOT make the edit/delete controls visually dominant.
+
+Use a subtle overflow/menu action or similarly refined control to expose:
+
+Edit
+Delete
+
+Delete must still show confirmation.
+
+Deleting a Dhikr must NOT delete its History.
+
+========================================
+TARGET DISPLAY
+========================================
+
+Show target information only if useful.
+
+Examples:
+
+Target: 33
+
+Target: 100
+
+Target: Not set
+
+Do NOT allow target editing directly from the Library card.
+
+Target editing remains inside the Add/Edit Dhikr form.
+
+========================================
+NO DEFAULT DHIKRS
+========================================
+
+Do NOT add any default Dhikrs.
+
+Fresh installation must continue to start with an empty library.
+
+Users manually add their own Dhikrs.
+
+========================================
+EMPTY STATE
+========================================
+
+When there are no Dhikrs:
+
+Show a beautiful minimal empty state.
+
+Example:
+
+Your Dhikr Library is Empty
+
+Add your first Dhikr to begin counting.
+
++ Add Dhikr
+
+Keep the same cinematic background and premium visual language.
+
+Do not fill the screen with unnecessary decoration.
+
+========================================
+ADD / EDIT DHIKR FORM
+========================================
+
+Keep the existing functionality but update its visual styling to match this screen.
+
+Fields:
+
+Dhikr name *
+
+Target
+
+Target options:
+
+None
+Custom
+
+IMPORTANT:
+
+Do NOT include:
+
+- Arabic text
+- Translation / meaning
+- 33
+- 99
+- 100 preset buttons
+
+Target is optional.
+
+If Custom is selected, allow the user to enter a custom numeric target.
+
+========================================
+BOTTOM NAVIGATION
+========================================
+
+Keep the existing app navigation.
+
+The reference uses a premium dark bottom navigation.
+
+Adapt it to our existing navigation:
+
+Counter
+History
+Stats
+Dhikrs
+
+Dhikrs should be the active tab.
+
+Active:
+
+- red icon
+- red label
+- subtle red glow/indicator
+
+Inactive:
+
+- muted gray/white
+
+Do not make navigation brighter than the main Dhikr list.
+
+========================================
+TYPOGRAPHY
+========================================
+
+The reference uses an elegant editorial/premium feel.
+
+Use a sophisticated typography hierarchy:
+
+Dhikrs:
+large elegant title
+
+Dhikr names:
+strong and readable
+
+Target:
+smaller muted text
+
+Buttons:
+clean and confident
+
+Navigation:
+small and understated
+
+Do not make everything bold.
+
+========================================
+ANIMATION
+========================================
+
+Use subtle premium animations:
+
+- Add Dhikr button press
+- Dhikr card press
+- smooth list appearance
+- edit/delete menu
+- Add/Edit form opening
+
+Keep animations fast and elegant.
+
+Do NOT add excessive bounce or flashy effects.
+
+========================================
+COLOR / LIGHTING
+========================================
+
+Primary background:
+near black
+
+Secondary surfaces:
+dark charcoal
+
+Text:
+warm white / cream
+
+Secondary text:
+muted gray
+
+Accent:
+deep premium red
+
+Ambient lighting:
+subtle warm amber
+
+Use red primarily for:
+
+- Add Dhikr
+- Allah icon
+- active navigation
+- selected/important states
+
+Do not turn the entire screen red.
+
+========================================
+IMPORTANT FUNCTIONALITY PROTECTION
+========================================
+
+This is a visual redesign only.
+
+DO NOT change:
+
+- Dhikr creation
+- Dhikr editing
+- Dhikr deletion
+- target behavior
+- custom targets
+- no-target behavior
+- counter selection
+- counter functionality
+- History
+- Stats
+- Settings
+- local storage
+- migration
+- offline functionality
+
+Do not add:
+
+- backend
+- accounts
+- login
+- cloud sync
+- favourites
+- recent filters
+- unnecessary dependencies
+
+========================================
+VISUAL QUALITY CHECK
+========================================
+
+Compare the final implementation directly with the supplied reference.
+
+The final screen should clearly resemble the reference in:
+
+- composition
+- dark cinematic atmosphere
+- warm background lighting
+- red accent treatment
+- premium Dhikr cards
+- Allah icons
+- typography
+- spacing
+- button treatment
+- navigation
+
+Do NOT simply add rounded corners and shadows to the existing screen.
+
+The composition itself should be redesigned.
+
+========================================
+FINAL REQUIREMENT
+========================================
+
+The final Dhikr Library should feel like:
+
+A premium personal Islamic remembrance library.
+
+It should be calm, beautiful, cinematic and easy to use.
+
+Keep functionality simple.
+
+Prioritize visual quality and clarity over adding features.
+
+After implementation:
+- run TypeScript checks
+- run existing tests
+- verify Android/iOS production builds
+- verify different screen sizes
+- verify safe areas
+- verify Add/Edit/Delete
+- verify empty state
+- verify existing Dhikr data remains intact
+
+Report the files changed and confirm functionality was preserved.
