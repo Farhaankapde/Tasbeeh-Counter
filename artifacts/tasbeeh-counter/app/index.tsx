@@ -166,7 +166,7 @@ export default function HomeScreen() {
 function HardwareCounter({ count, width, palette, scale, pressed, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   return <View style={[styles.hardware, { width, height: width * 1.30, shadowColor: palette.shadow }]}>
-    <Image source={require('../assets/images/realistic-counter-smaller-dial.png')} resizeMode="cover" style={styles.hardwareImage} />
+    <Image source={require('../assets/images/realistic-counter-smaller-dial-transparent.png')} resizeMode="cover" style={styles.hardwareImage} />
     <View style={styles.liveDisplay}>
       <Text style={styles.ghostDigits}>888</Text>
       <Animated.Text style={[styles.hardwareDigits, { transform: [{ scale }] }]}>{display}</Animated.Text>
