@@ -7,13 +7,11 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, getCountFeedback, getLocalDateKey, shouldStopCounting } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, migrateStoredState, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 
-type Dhikr = { id: string; name: string; arabic: string; icon: keyof typeof MaterialCommunityIcons.glyphMap };
-type HistoryEntry = { id: string; dhikr: string; repetitions: number; time: string; date?: string };
-type AppState = { selectedId: string; counters: Record<string, number>; targets: Record<string, number | null>; dailyCounts: Record<string, number>; lifetimeCount: number; vibration: boolean; sound: boolean; counterAnimation: boolean; autoSave: boolean; stopAtTarget: boolean; theme: 'dark' | 'light'; history: HistoryEntry[] };
+type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
-const DEFAULT_DHIKR: Dhikr[] = [
+const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
   { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
   { id: 'allahu-akbar', name: 'Allahu Akbar', arabic: 'ٱللَّٰهُ أَكْبَرُ', icon: 'star-four-points' },
@@ -21,9 +19,9 @@ const DEFAULT_DHIKR: Dhikr[] = [
   { id: 'astaghfirullah', name: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ ٱللَّٰهَ', icon: 'water-outline' },
   { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
 ];
-const DEFAULT_COUNTERS: Record<string, number> = { subhanallah: 289, alhamdulillah: 120, 'allahu-akbar': 67, 'la-ilaha': 43, astaghfirullah: 56, subhanallahi: 31 };
-const DEFAULT_TARGETS: Record<string, number | null> = Object.fromEntries(DEFAULT_DHIKR.map((item) => [item.id, null]));
-const DEFAULT_STATE: AppState = { selectedId: 'subhanallah', counters: DEFAULT_COUNTERS, targets: DEFAULT_TARGETS, dailyCounts: {}, lifetimeCount: Object.values(DEFAULT_COUNTERS).reduce((sum, value) => sum + value, 0), vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', history: [] };
+const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', history: [] };
+type PracticeSnapshot = Pick<AppState, 'counters' | 'dailyCounts' | 'dailyCountsByDhikr' | 'lifetimeCount' | 'history'>;
+const getPracticeSnapshot = (state: AppState): PracticeSnapshot => ({ counters: state.counters, dailyCounts: state.dailyCounts, dailyCountsByDhikr: state.dailyCountsByDhikr, lifetimeCount: state.lifetimeCount, history: state.history });
 
 type Palette = typeof colors.dark | typeof colors.light;
 
@@ -41,25 +39,47 @@ export default function HomeScreen() {
   const [resetting, setResetting] = useState(false);
   const [pressed, setPressed] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [targetEditorOpen, setTargetEditorOpen] = useState(false);
-  const [targetDraft, setTargetDraft] = useState('');
+  const [dhikrEditorOpen, setDhikrEditorOpen] = useState(false);
+  const [editingDhikrId, setEditingDhikrId] = useState<string | null>(null);
+  const [dhikrNameDraft, setDhikrNameDraft] = useState('');
+  const [dhikrArabicDraft, setDhikrArabicDraft] = useState('');
+  const [dhikrTranslationDraft, setDhikrTranslationDraft] = useState('');
+  const [dhikrTargetDraft, setDhikrTargetDraft] = useState('');
+  const [dhikrCustomTargetOpen, setDhikrCustomTargetOpen] = useState(false);
+  const [deleteDhikrId, setDeleteDhikrId] = useState<string | null>(null);
   const [completionFlash, setCompletionFlash] = useState(false);
+  const appStateRef = useRef<AppState>(DEFAULT_STATE);
   const scale = useRef(new Animated.Value(1)).current;
   const tapSound = useRef<Audio.Sound | null>(null);
   const completionSound = useRef<Audio.Sound | null>(null);
   const webAudio = useRef<AudioContext | null>(null);
-  const savedCounters = useRef<Record<string, number>>(DEFAULT_COUNTERS);
+  const savedPractice = useRef<PracticeSnapshot>(getPracticeSnapshot(DEFAULT_STATE));
+  const storageWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const feedbackTriggered = useRef(new Set<string>());
   const palette = appState.theme === 'light' ? colors.light : colors.dark;
-  const selectedDhikr = useMemo(() => DEFAULT_DHIKR.find((item) => item.id === appState.selectedId) ?? DEFAULT_DHIKR[0], [appState.selectedId]);
-  const currentCount = appState.counters[selectedDhikr.id] ?? 0;
-  const selectedTarget = appState.targets[selectedDhikr.id] ?? null;
-  const stats = calculateStats(appState.dailyCounts, appState.lifetimeCount);
+  const selectedDhikr = useMemo(() => appState.dhikrs.find((item) => item.id === appState.selectedId) ?? appState.dhikrs[0] ?? ({ id: '', name: 'Dhikr', arabic: '', icon: 'circle-double' } as Dhikr), [appState.dhikrs, appState.selectedId]);
+  const currentCount = selectedDhikr ? appState.counters[selectedDhikr.id] ?? 0 : 0;
+  const selectedTarget = selectedDhikr ? appState.targets[selectedDhikr.id] ?? null : null;
+  const stats = calculateStats(appState.dailyCounts, appState.lifetimeCount, new Date(), appState.dailyCountsByDhikr);
   const todayCount = stats.today;
   const weekCount = stats.thisWeek;
   const totalCount = stats.total;
   const deviceWidth = Math.min(Math.max((width - 34) * 1.08, 320), 400);
   const targetProgress = selectedTarget ? Math.min(currentCount / selectedTarget, 1) : 0;
+
+  const updateAppState = (updater: (previous: AppState) => AppState) => {
+    const next = updater(appStateRef.current);
+    appStateRef.current = next;
+    setAppState(next);
+    return next;
+  };
+
+  const queuePersist = (state: AppState) => {
+    storageWriteQueue.current = storageWriteQueue.current
+      .catch(() => undefined)
+      .then(() => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)));
+    return storageWriteQueue.current;
+  };
 
   useEffect(() => {
     let active = true;
@@ -67,14 +87,10 @@ export default function HomeScreen() {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw && active) {
-          const parsed = JSON.parse(raw) as Partial<AppState>;
-          const counters = { ...DEFAULT_COUNTERS, ...(parsed.counters ?? {}) };
-          const targets = { ...DEFAULT_TARGETS, ...(parsed.targets ?? {}) };
-          const lifetimeCount = typeof parsed.lifetimeCount === 'number'
-            ? parsed.lifetimeCount
-            : Object.values(counters).reduce((sum, value) => sum + value, 0);
-          savedCounters.current = counters;
-          setAppState({ ...DEFAULT_STATE, ...parsed, counters, targets, dailyCounts: parsed.dailyCounts ?? {}, lifetimeCount, history: parsed.history ?? [], stopAtTarget: parsed.stopAtTarget === true, theme: parsed.theme === 'light' ? 'light' : 'dark' });
+          const migrated = migrateStoredState(JSON.parse(raw) as unknown, DEFAULT_STATE, LEGACY_DHIKRS);
+          appStateRef.current = migrated;
+          savedPractice.current = getPracticeSnapshot(migrated);
+          setAppState(migrated);
         }
       } catch {
         // The default state keeps the core counter usable offline.
@@ -115,9 +131,9 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const countersToPersist = appState.autoSave ? appState.counters : savedCounters.current;
-    if (appState.autoSave) savedCounters.current = appState.counters;
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...appState, counters: countersToPersist }));
+    const practice = appState.autoSave ? getPracticeSnapshot(appState) : savedPractice.current;
+    if (appState.autoSave) savedPractice.current = practice;
+    void queuePersist({ ...appState, ...practice });
   }, [appState, hydrated]);
 
   const playClick = async () => {
@@ -167,96 +183,154 @@ export default function HomeScreen() {
   };
 
   const increment = () => {
-    if (shouldStopCounting(currentCount, selectedTarget, appState.stopAtTarget)) {
-      if (appState.vibration) void Haptics.selectionAsync();
+    const previous = appStateRef.current;
+    const dhikr = previous.dhikrs.find((item) => item.id === previous.selectedId) ?? previous.dhikrs[0];
+    if (!dhikr) return;
+    const count = previous.counters[dhikr.id] ?? 0;
+    const target = previous.targets[dhikr.id] ?? null;
+    if (!canAcceptCount(count, target, previous.stopAtTarget, hydrated)) {
+      if (previous.vibration) void Haptics.selectionAsync();
       return;
     }
-    const nextCount = Math.min(999999, currentCount + 1);
+    const nextCount = Math.min(999999, count + 1);
     const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const date = getLocalDateKey();
-    const targetFeedbackKey = `target:${selectedDhikr.id}:${selectedTarget}`;
-    const feedback = getCountFeedback(nextCount, selectedTarget);
+    const targetFeedbackKey = `target:${dhikr.id}:${target}`;
+    const feedback = getCountFeedback(nextCount, target);
     const reachedTarget = feedback === 'target' && !feedbackTriggered.current.has(targetFeedbackKey);
     const milestone = feedback === 'milestone';
-    const milestoneFeedbackKey = `milestone:${selectedDhikr.id}:${nextCount}`;
-    setAppState((previous) => {
-      const last = previous.history[0];
-      const nextHistory = last && last.dhikr === selectedDhikr.name && last.date === date
-        ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
-        : [{ id: String(Date.now()), dhikr: selectedDhikr.name, repetitions: 1, time, date }, ...previous.history].slice(0, 30);
-      return {
-        ...previous,
-        counters: { ...previous.counters, [selectedDhikr.id]: nextCount },
-        dailyCounts: { ...previous.dailyCounts, [date]: (previous.dailyCounts[date] ?? 0) + 1 },
-        lifetimeCount: previous.lifetimeCount + 1,
-        history: nextHistory,
-      };
-    });
+    const milestoneFeedbackKey = `milestone:${dhikr.id}:${nextCount}`;
+    const last = previous.history[0];
+    const nextHistory = last && last.dhikrId === dhikr.id && last.date === date
+      ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
+      : [{ id: String(Date.now()), dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history].slice(0, 30);
+    updateAppState(() => ({
+      ...previous,
+      counters: { ...previous.counters, [dhikr.id]: nextCount },
+      dailyCounts: previous.dailyCounts,
+      dailyCountsByDhikr: {
+        ...previous.dailyCountsByDhikr,
+        [dhikr.id]: { ...(previous.dailyCountsByDhikr[dhikr.id] ?? {}), [date]: (previous.dailyCountsByDhikr[dhikr.id]?.[date] ?? 0) + 1 },
+      },
+      lifetimeCount: previous.lifetimeCount + 1,
+      history: nextHistory,
+    }));
     if (reachedTarget) {
       feedbackTriggered.current.add(targetFeedbackKey);
-      if (appState.vibration) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (appState.sound) void playCompletion();
+      if (previous.vibration) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (previous.sound) void playCompletion();
       setCompletionFlash(true);
       setTimeout(() => setCompletionFlash(false), 1300);
     } else {
       if (milestone) {
         if (!feedbackTriggered.current.has(milestoneFeedbackKey)) {
           feedbackTriggered.current.add(milestoneFeedbackKey);
-          if (appState.vibration) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (previous.vibration) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
-      } else if (appState.vibration) {
+      } else if (previous.vibration) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
-      if (appState.sound) void playClick();
+      if (previous.sound) void playClick();
     }
-    if (appState.counterAnimation) {
+    if (previous.counterAnimation) {
       scale.setValue(reachedTarget ? 0.91 : milestone ? 0.93 : 0.96);
       Animated.timing(scale, { toValue: 1, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     }
   };
 
-  const changeSetting = <K extends keyof AppState>(key: K, value: AppState[K]) => setAppState((previous) => ({ ...previous, [key]: value }));
+  const changeSetting = <K extends keyof AppState>(key: K, value: AppState[K]) => updateAppState((previous) => ({ ...previous, [key]: value }));
   const resetCurrent = () => {
+    if (!selectedDhikr) return;
+    const id = appStateRef.current.selectedId;
     setResetting(false);
-    [...feedbackTriggered.current].filter((key) => key.includes(`:${selectedDhikr.id}:`)).forEach((key) => feedbackTriggered.current.delete(key));
+    [...feedbackTriggered.current].filter((key) => key.includes(`:${id}:`)).forEach((key) => feedbackTriggered.current.delete(key));
     setCompletionFlash(false);
-    setAppState((previous) => ({ ...previous, counters: { ...previous.counters, [selectedDhikr.id]: 0 } }));
+    updateAppState((previous) => ({ ...previous, counters: { ...previous.counters, [id]: 0 } }));
   };
-  const chooseDhikr = (id: string) => { setAppState((previous) => ({ ...previous, selectedId: id })); setSelectorOpen(false); setActiveTab('counter'); };
-  const setTarget = (target: number) => {
-    if (!Number.isInteger(target) || target < 1 || target > 999999) return;
-    setAppState((previous) => ({ ...previous, targets: { ...previous.targets, [selectedDhikr.id]: target } }));
-    setTargetDraft('');
-    setTargetEditorOpen(false);
+  const chooseDhikr = (id: string) => { updateAppState((previous) => ({ ...previous, selectedId: id })); setSelectorOpen(false); setActiveTab('counter'); };
+  const makeDhikrId = () => `dhikr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const openDhikrEditor = (item?: DhikrRecord) => {
+    setEditingDhikrId(item?.id ?? null);
+    setDhikrNameDraft(item?.name ?? '');
+    setDhikrArabicDraft(item?.arabic ?? '');
+    setDhikrTranslationDraft(item?.translation ?? '');
+    const target = item ? appStateRef.current.targets[item.id] ?? null : null;
+    setDhikrTargetDraft(target ? String(target) : '');
+    setDhikrCustomTargetOpen(Boolean(target && ![33, 99, 100].includes(target)));
+    setDhikrEditorOpen(true);
   };
-  const saveCustomTarget = () => setTarget(Number(targetDraft));
-  const saveNow = () => { void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1500); };
+  const closeDhikrEditor = () => {
+    setDhikrEditorOpen(false);
+    setEditingDhikrId(null);
+    setDhikrNameDraft('');
+    setDhikrArabicDraft('');
+    setDhikrTranslationDraft('');
+    setDhikrTargetDraft('');
+    setDhikrCustomTargetOpen(false);
+  };
+  const saveDhikr = () => {
+    const name = dhikrNameDraft.trim();
+    if (!name) return;
+    const target = dhikrTargetDraft === '' ? null : Number(dhikrTargetDraft);
+    if (target !== null && (!Number.isInteger(target) || target < 1 || target > 999999)) return;
+    const existing = editingDhikrId ? appStateRef.current.dhikrs.find((item) => item.id === editingDhikrId) : undefined;
+    const id = editingDhikrId ?? makeDhikrId();
+    const item: DhikrRecord = { id, name, arabic: dhikrArabicDraft.trim() || undefined, translation: dhikrTranslationDraft.trim() || undefined, icon: existing?.icon ?? 'circle-double' };
+    updateAppState((previous) => ({
+      ...previous,
+      dhikrs: editingDhikrId ? previous.dhikrs.map((entry) => entry.id === id ? item : entry) : [...previous.dhikrs, item],
+      selectedId: previous.selectedId || id,
+      counters: editingDhikrId ? previous.counters : { ...previous.counters, [id]: 0 },
+      targets: { ...previous.targets, [id]: target },
+    }));
+    closeDhikrEditor();
+  };
+  const confirmDeleteDhikr = () => {
+    if (!deleteDhikrId) return;
+    const id = deleteDhikrId;
+    updateAppState((previous) => {
+      const dhikrs = previous.dhikrs.filter((item) => item.id !== id);
+      const nextSelected = previous.selectedId === id ? dhikrs[0]?.id ?? '' : previous.selectedId;
+      const counters = { ...previous.counters }; delete counters[id];
+      const targets = { ...previous.targets }; delete targets[id];
+      return { ...previous, dhikrs, selectedId: nextSelected, counters, targets };
+    });
+    setDeleteDhikrId(null);
+  };
+  const saveNow = async () => {
+    const state = appStateRef.current;
+    savedPractice.current = getPracticeSnapshot(state);
+    await queuePersist(state);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1500);
+  };
 
   return (
     <LinearGradient colors={[palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle="light-content" />
-      {activeTab === 'counter' ? <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24, paddingBottom: 104 + Math.max(insets.bottom, 14) }]}>
-        <View style={styles.topBar}><IconButton icon="menu" label="Open menu" onPress={() => setMenuOpen(true)} palette={palette} /><View style={styles.greeting}><Text style={[styles.eyebrow, { color: palette.muted }]}>Assalamu Alaikum,</Text><Text style={[styles.greetingName, { color: palette.foreground }]}>Farhaan</Text></View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
+      {activeTab === 'counter' ? appState.dhikrs.length > 0 ? <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24, paddingBottom: 104 + Math.max(insets.bottom, 14) }]}>
+        <View style={styles.topBar}><IconButton icon="menu" label="Open menu" onPress={() => setMenuOpen(true)} palette={palette} /><Text style={[styles.greetingName, { color: palette.foreground }]}>Tasbeeh Counter</Text><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
         <View style={[styles.selector, { backgroundColor: palette.card, borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
           <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
-            <View style={[styles.selectorIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={selectedDhikr.icon} size={24} color={palette.primaryForeground} /></View>
+             <View style={[styles.selectorIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={selectedDhikr.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={24} color={palette.primaryForeground} /></View>
             <View style={styles.selectorCopy}><Text style={[styles.selectorName, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View>
             <Feather name="chevron-down" size={20} color={palette.foreground} />
           </Pressable>
-          <Pressable testID="target-editor" accessibilityRole="button" accessibilityLabel={selectedTarget ? `Change target, currently ${selectedTarget}` : 'Set target'} onPress={() => setTargetEditorOpen(true)} style={({ pressed: targetPressed }) => [styles.targetPill, { backgroundColor: selectedTarget ? palette.primary : palette.surface, opacity: targetPressed ? 0.72 : 1 }]}>
+           {selectedTarget ? <View accessibilityLabel={`Target ${selectedTarget}`} style={[styles.targetPill, { backgroundColor: palette.primary }]}>
             <MaterialCommunityIcons name={completionFlash ? 'check-circle' : 'target'} size={14} color={selectedTarget ? palette.primaryForeground : palette.primaryBright} />
-            <Text style={[styles.targetPillText, { color: selectedTarget ? palette.primaryForeground : palette.foreground }]}>{selectedTarget ? `${currentCount} / ${selectedTarget}` : 'Set Target'}</Text>
-          </Pressable>
-          <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><View style={[styles.selectorProgress, { width: `${Math.round(targetProgress * 100)}%`, backgroundColor: completionFlash ? palette.primaryBright : palette.primary }]} /></View>
+             <Text style={[styles.targetPillText, { color: palette.primaryForeground }]}>{`${currentCount} / ${selectedTarget}`}</Text>
+           </View> : null}
+           {selectedTarget ? <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><View style={[styles.selectorProgress, { width: `${Math.round(targetProgress * 100)}%`, backgroundColor: completionFlash ? palette.primaryBright : palette.primary }]} /></View> : null}
         </View>
-         <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} />
+         <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} />
          <View style={[styles.actionBar, { backgroundColor: palette.card, borderColor: palette.border }]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.actionItem, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.muted} /><Text style={[styles.actionText, { color: palette.foreground }]}>RESET</Text></Pressable><View style={[styles.actionDivider, { backgroundColor: palette.border }]} /><Pressable accessibilityRole="button" accessibilityLabel="Save count now" onPress={saveNow} style={({ pressed: p }) => [styles.actionItem, p && styles.pressed]}><Feather name={savedFlash ? 'check' : 'save'} size={20} color={savedFlash ? palette.primaryBright : palette.muted} /><Text style={[styles.actionText, { color: palette.foreground }]}>{savedFlash ? 'SAVED' : 'SAVE'}</Text></Pressable></View>
-       </ScrollView> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} onChooseDhikr={chooseDhikr} />}
+         </ScrollView> : <EmptyHome palette={palette} onAdd={() => { setActiveTab('dhikrs'); openDhikrEditor(); }} onSettings={() => setSettingsOpen(true)} /> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} onChooseDhikr={chooseDhikr} onAddDhikr={() => openDhikrEditor()} onEditDhikr={openDhikrEditor} onDeleteDhikr={setDeleteDhikrId} />}
       <TabBar activeTab={activeTab} palette={palette} onChange={setActiveTab} bottomInset={insets.bottom} />
 
-      <Modal visible={selectorOpen} transparent animationType="slide" onRequestClose={() => setSelectorOpen(false)}><View style={styles.modalRoot}><Pressable style={styles.modalBackdrop} onPress={() => setSelectorOpen(false)} /><View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}><SheetHandle palette={palette} /><View style={styles.sheetHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Choose Dhikr</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Each remembrance keeps its own count</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close Dhikr selector" onPress={() => setSelectorOpen(false)} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View>{DEFAULT_DHIKR.map((item, index) => { const active = item.id === selectedDhikr.id; return <Pressable key={item.id} testID={'dhikr-option-' + item.id} accessibilityRole="button" accessibilityLabel={'Select ' + item.name} onPress={() => chooseDhikr(item.id)} style={({ pressed: p }) => [styles.option, { backgroundColor: active ? palette.primary : palette.surface, borderColor: active ? palette.primaryBright : palette.border, opacity: p ? 0.78 : 1 }]}><View style={[styles.optionIcon, { backgroundColor: active ? palette.primaryBright : palette.primary }]}><MaterialCommunityIcons name={item.icon} size={19} color={palette.primaryForeground} /></View><View style={styles.optionCopy}><Text style={[styles.optionName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.optionArabic, { color: palette.muted }]}>{item.arabic}</Text></View><View style={styles.optionMeta}><Text style={[styles.optionCount, { color: active ? palette.primaryForeground : palette.muted }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text>{active ? <Feather name="check" size={18} color={palette.primaryForeground} /> : <Text style={[styles.optionNumber, { color: palette.muted }]}>{String(index + 1).padStart(2, '0')}</Text>}</View></Pressable>; })}</View></View></Modal>
+       <Modal visible={selectorOpen} transparent animationType="slide" onRequestClose={() => setSelectorOpen(false)}><View style={styles.modalRoot}><Pressable style={styles.modalBackdrop} onPress={() => setSelectorOpen(false)} /><View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}><SheetHandle palette={palette} /><View style={styles.sheetHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Choose Dhikr</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Each remembrance keeps its own count</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close Dhikr selector" onPress={() => setSelectorOpen(false)} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View>{appState.dhikrs.map((item, index) => { const active = item.id === selectedDhikr?.id; return <Pressable key={item.id} testID={'dhikr-option-' + item.id} accessibilityRole="button" accessibilityLabel={'Select ' + item.name} onPress={() => chooseDhikr(item.id)} style={({ pressed: p }) => [styles.option, { backgroundColor: active ? palette.primary : palette.surface, borderColor: active ? palette.primaryBright : palette.border, opacity: p ? 0.78 : 1 }]}><View style={[styles.optionIcon, { backgroundColor: active ? palette.primaryBright : palette.primary }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={19} color={palette.primaryForeground} /></View><View style={styles.optionCopy}><Text style={[styles.optionName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.optionArabic, { color: palette.muted }]}>{item.arabic ?? ''}</Text></View><View style={styles.optionMeta}><Text style={[styles.optionCount, { color: active ? palette.primaryForeground : palette.muted }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text>{active ? <Feather name="check" size={18} color={palette.primaryForeground} /> : <Text style={[styles.optionNumber, { color: palette.muted }]}>{String(index + 1).padStart(2, '0')}</Text>}</View></Pressable>; })}</View></View></Modal>
 
-      <Modal visible={targetEditorOpen} transparent animationType="slide" onRequestClose={() => setTargetEditorOpen(false)}><View style={styles.modalRoot}><Pressable style={styles.modalBackdrop} onPress={() => setTargetEditorOpen(false)} /><View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}><SheetHandle palette={palette} /><View style={styles.sheetHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Set Target</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Choose a target for {selectedDhikr.name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close target selector" onPress={() => setTargetEditorOpen(false)} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View><View style={styles.targetPresetRow}>{[33, 99, 100].map((target) => <Pressable key={target} testID={`target-${target}`} accessibilityRole="button" accessibilityLabel={`Set target to ${target}`} onPress={() => setTarget(target)} style={({ pressed: p }) => [styles.targetPreset, { backgroundColor: selectedTarget === target ? palette.primary : palette.surface, borderColor: selectedTarget === target ? palette.primaryBright : palette.border, opacity: p ? 0.72 : 1 }]}><Text style={[styles.targetPresetText, { color: selectedTarget === target ? palette.primaryForeground : palette.foreground }]}>{target}</Text></Pressable>)}<Pressable testID="target-custom" accessibilityRole="button" accessibilityLabel="Enter a custom target" onPress={() => setTargetDraft(selectedTarget ? String(selectedTarget) : '')} style={({ pressed: p }) => [styles.targetPreset, { backgroundColor: palette.surface, borderColor: palette.border, opacity: p ? 0.72 : 1 }]}><Text style={[styles.targetPresetText, { color: palette.foreground }]}>Custom</Text></Pressable></View>{targetDraft !== '' || selectedTarget === null ? <View style={styles.customTargetRow}><TextInput testID="custom-target-input" accessibilityLabel="Custom target" value={targetDraft} onChangeText={(value) => setTargetDraft(value.replace(/[^0-9]/g, '').slice(0, 6))} onSubmitEditing={saveCustomTarget} keyboardType="number-pad" placeholder="Enter target" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} /><Pressable testID="save-custom-target" accessibilityRole="button" accessibilityLabel="Save custom target" disabled={!Number.isInteger(Number(targetDraft)) || Number(targetDraft) < 1} onPress={saveCustomTarget} style={({ pressed: p }) => [styles.customTargetSave, { backgroundColor: palette.primary, opacity: !Number.isInteger(Number(targetDraft)) || Number(targetDraft) < 1 ? 0.4 : p ? 0.72 : 1 }]}><Text style={[styles.targetPresetText, { color: palette.primaryForeground }]}>Save</Text></Pressable></View> : null}<Text style={[styles.targetHint, { color: palette.muted }]}>Each Dhikr keeps its own target. No target is selected automatically.</Text></View></View></Modal>
+       <Modal visible={dhikrEditorOpen} transparent animationType="slide" onRequestClose={closeDhikrEditor}><View style={styles.modalRoot}><Pressable style={styles.modalBackdrop} onPress={closeDhikrEditor} /><View style={[styles.sheet, styles.dhikrFormSheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}><SheetHandle palette={palette} /><View style={styles.sheetHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>{editingDhikrId ? 'Edit Dhikr' : 'Add Dhikr'}</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Keep your remembrance personal and local</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close Dhikr form" onPress={closeDhikrEditor} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.dhikrFormContent}><TextInput testID="dhikr-name-input" accessibilityLabel="Dhikr name" value={dhikrNameDraft} onChangeText={setDhikrNameDraft} placeholder="Dhikr name *" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} /><TextInput testID="dhikr-arabic-input" accessibilityLabel="Arabic text" value={dhikrArabicDraft} onChangeText={setDhikrArabicDraft} placeholder="Arabic text (optional)" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} /><TextInput testID="dhikr-translation-input" accessibilityLabel="Translation or meaning" value={dhikrTranslationDraft} onChangeText={setDhikrTranslationDraft} placeholder="Translation / meaning (optional)" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} /><Text style={[styles.sectionLabel, { color: palette.muted, marginTop: 14 }]}>TARGET</Text><View style={styles.targetPresetRow}><Pressable testID="dhikr-target-none" onPress={() => { setDhikrTargetDraft(''); setDhikrCustomTargetOpen(false); }} style={[styles.targetPreset, { backgroundColor: dhikrTargetDraft === '' && !dhikrCustomTargetOpen ? palette.primary : palette.surface, borderColor: palette.border }]}><Text style={[styles.targetPresetText, { color: dhikrTargetDraft === '' && !dhikrCustomTargetOpen ? palette.primaryForeground : palette.foreground }]}>None</Text></Pressable>{[33, 99, 100].map((target) => <Pressable key={target} testID={`dhikr-target-${target}`} onPress={() => { setDhikrTargetDraft(String(target)); setDhikrCustomTargetOpen(false); }} style={[styles.targetPreset, { backgroundColor: dhikrTargetDraft === String(target) ? palette.primary : palette.surface, borderColor: palette.border }]}><Text style={[styles.targetPresetText, { color: dhikrTargetDraft === String(target) ? palette.primaryForeground : palette.foreground }]}>{target}</Text></Pressable>)}<Pressable testID="dhikr-target-custom" onPress={() => setDhikrCustomTargetOpen(true)} style={[styles.targetPreset, { backgroundColor: dhikrCustomTargetOpen ? palette.primary : palette.surface, borderColor: palette.border }]}><Text style={[styles.targetPresetText, { color: dhikrCustomTargetOpen ? palette.primaryForeground : palette.foreground }]}>Custom</Text></Pressable></View>{dhikrCustomTargetOpen ? <TextInput testID="dhikr-custom-target-input" accessibilityLabel="Custom target" value={dhikrTargetDraft} onChangeText={(value) => setDhikrTargetDraft(value.replace(/[^0-9]/g, '').slice(0, 6))} keyboardType="number-pad" placeholder="1–999999" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} /> : null}<Pressable testID="save-dhikr" accessibilityRole="button" accessibilityLabel={editingDhikrId ? 'Save Dhikr changes' : 'Create Dhikr'} disabled={!dhikrNameDraft.trim() || (dhikrCustomTargetOpen && (!Number.isInteger(Number(dhikrTargetDraft)) || Number(dhikrTargetDraft) < 1 || Number(dhikrTargetDraft) > 999999))} onPress={saveDhikr} style={[styles.formSubmit, { backgroundColor: palette.primary, opacity: !dhikrNameDraft.trim() ? 0.45 : 1 }]}><Text style={[styles.targetPresetText, { color: palette.primaryForeground }]}>{editingDhikrId ? 'Save Changes' : 'Create Dhikr'}</Text></Pressable></ScrollView></View></View></Modal>
+       <Modal visible={deleteDhikrId !== null} transparent animationType="fade" onRequestClose={() => setDeleteDhikrId(null)}><View style={styles.confirmRoot}><Pressable style={styles.modalBackdrop} onPress={() => setDeleteDhikrId(null)} /><View style={[styles.confirmCard, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.confirmIcon, { backgroundColor: palette.destructive }]}><Feather name="trash-2" size={22} color={palette.primaryForeground} /></View><Text style={[styles.confirmTitle, { color: palette.foreground }]}>Delete Dhikr?</Text><Text style={[styles.confirmBody, { color: palette.muted }]}>Its current count and target will be removed. History and lifetime totals stay safe.</Text><View style={styles.confirmActions}><Pressable accessibilityRole="button" accessibilityLabel="Cancel delete" onPress={() => setDeleteDhikrId(null)} style={[styles.confirmButton, { backgroundColor: palette.surface }]}><Text style={[styles.confirmButtonText, { color: palette.foreground }]}>Cancel</Text></Pressable><Pressable testID="confirm-delete-dhikr" accessibilityRole="button" accessibilityLabel="Confirm delete Dhikr" onPress={confirmDeleteDhikr} style={[styles.confirmButton, { backgroundColor: palette.destructive }]}><Text style={[styles.confirmButtonText, { color: palette.primaryForeground }]}>Delete</Text></Pressable></View></View></View></Modal>
 
       <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}><View style={[styles.settingsRoot, { backgroundColor: palette.background, paddingTop: insets.top + 12, paddingBottom: Math.max(insets.bottom, 18) }]}><View style={styles.settingsHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Settings</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Make the practice feel like yours</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close settings" onPress={() => setSettingsOpen(false)} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.settingsScroll}><SettingsSection title="COUNTER" palette={palette}><SettingRow icon="vibrate" label="Vibration" value={appState.vibration} onValueChange={(value) => changeSetting('vibration', value)} palette={palette} /><SettingDivider palette={palette} /><SettingRow icon="volume-2" label="Sound" value={appState.sound} onValueChange={(value) => changeSetting('sound', value)} palette={palette} feather /><SettingDivider palette={palette} /><SettingRow icon="activity" label="Counter animation" value={appState.counterAnimation} onValueChange={(value) => changeSetting('counterAnimation', value)} palette={palette} feather /><SettingDivider palette={palette} /><SettingRow icon="save" label="Auto-save" value={appState.autoSave} onValueChange={(value) => changeSetting('autoSave', value)} palette={palette} feather /><SettingDivider palette={palette} /><SettingRow icon="flag" label="Stop counting at target" value={appState.stopAtTarget} onValueChange={(value) => changeSetting('stopAtTarget', value)} palette={palette} feather /></SettingsSection><SettingsSection title="APPEARANCE" palette={palette}><View style={styles.themeRow}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}><Feather name="sun" size={17} color={palette.primaryForeground} /></View><Text style={[styles.settingLabel, { color: palette.foreground }]}>Theme</Text><View style={[styles.segmented, { backgroundColor: palette.surface }]}>{(['dark', 'light'] as const).map((theme) => <Pressable key={theme} onPress={() => changeSetting('theme', theme)} style={[styles.segment, appState.theme === theme && { backgroundColor: palette.primary }]}><Feather name={theme === 'dark' ? 'moon' : 'sun'} size={14} color={appState.theme === theme ? palette.primaryForeground : palette.muted} /><Text style={[styles.segmentText, { color: appState.theme === theme ? palette.primaryForeground : palette.muted }]}>{theme === 'dark' ? 'Dark' : 'Light'}</Text></Pressable>)}</View></View><SettingDivider palette={palette} /><View style={styles.settingInfoRow}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}><Feather name="type" size={17} color={palette.primaryForeground} /></View><View><Text style={[styles.settingLabel, { color: palette.foreground }]}>Counter size</Text><Text style={[styles.settingHint, { color: palette.muted }]}>Large and easy to read</Text></View></View></SettingsSection><SettingsSection title="ABOUT" palette={palette}><View style={styles.aboutRow}><View style={[styles.aboutMark, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={21} color={palette.primaryForeground} /></View><View style={styles.aboutCopy}><Text style={[styles.aboutTitle, { color: palette.foreground }]}>Tasbeeh Counter</Text><Text style={[styles.aboutBody, { color: palette.muted }]}>A quiet place to remember.</Text></View><Text style={[styles.version, { color: palette.muted }]}>v1.0</Text></View></SettingsSection></ScrollView></View></Modal>
 
@@ -267,7 +341,7 @@ export default function HomeScreen() {
   );
 }
 
-function HardwareCounter({ count, width, palette, scale, pressed, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
+function HardwareCounter({ count, width, palette, scale, pressed, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   return <View style={[styles.hardware, { width, height: width * 1.38, shadowColor: palette.shadow }]}>
     <Image source={require('../assets/images/realistic-counter-polished.png')} resizeMode="contain" style={styles.hardwareImage} />
@@ -275,13 +349,13 @@ function HardwareCounter({ count, width, palette, scale, pressed, onPress, onPre
       <Text style={styles.ghostDigits}>888</Text>
       <Animated.Text style={[styles.hardwareDigits, { transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed]} />
+    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed]} />
   </View>;
 }
 
 function MetricCard({ icon, label, value, palette }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: number; palette: Palette }) { return <View style={[styles.metricCard, { backgroundColor: palette.card, borderColor: palette.border }]}><MaterialCommunityIcons name={icon} size={19} color={palette.primaryBright} /><Text style={[styles.metricLabel, { color: palette.muted }]}>{label}</Text><Text style={[styles.metricValue, { color: palette.foreground }]}>{value.toLocaleString()}</Text><View style={[styles.metricUnderline, { backgroundColor: palette.primary }]} /></View>; }
 
-function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCount, onChooseDhikr }: { tab: Tab; palette: Palette; appState: AppState; todayCount: number; weekCount: number; totalCount: number; onChooseDhikr: (id: string) => void }) {
+function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCount, onChooseDhikr, onAddDhikr, onEditDhikr, onDeleteDhikr }: { tab: Tab; palette: Palette; appState: AppState; todayCount: number; weekCount: number; totalCount: number; onChooseDhikr: (id: string) => void; onAddDhikr: () => void; onEditDhikr: (item: DhikrRecord) => void; onDeleteDhikr: (id: string) => void }) {
   const insets = useSafeAreaInsets();
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikr Library';
   const selectedCount = appState.counters[appState.selectedId] ?? 0;
@@ -289,21 +363,25 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
   const progress = selectedTarget ? Math.min(selectedCount / selectedTarget, 1) : 0;
   return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: insets.top + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
     <View style={styles.secondaryHeader}><Text style={[styles.secondaryTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.secondarySubtitle, { color: palette.muted }]}>{tab === 'history' ? 'Your recent remembrance sessions' : tab === 'stats' ? 'A quiet view of your progress' : 'Choose a remembrance to continue'}</Text></View>
-    {tab === 'history' ? <View>{appState.history.length === 0 ? <EmptyPanel icon="clock" title="No sessions yet" body="Your completed counting sessions will appear here." palette={palette} /> : appState.history.map((entry) => <View key={entry.id} style={[styles.historyRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{entry.dhikr}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${entry.date} · ${entry.time}` : entry.time}</Text></View><Text style={[styles.historyCount, { color: palette.primaryBright }]}>+{entry.repetitions}</Text></View>)}</View>
+    {tab === 'history' ? <View>{appState.history.length === 0 ? <EmptyPanel icon="clock" title="No sessions yet" body="Your completed counting sessions will appear here." palette={palette} /> : appState.history.map((entry) => <View key={entry.id} style={[styles.historyRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{appState.dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${entry.date} · ${entry.time}` : entry.time}</Text></View><Text style={[styles.historyCount, { color: palette.primaryBright }]}>+{entry.repetitions}</Text></View>)}</View>
       : tab === 'stats' ? <View>
         <View style={styles.statsGrid}><MetricCard icon="calendar-today" label="Today" value={todayCount} palette={palette} /><MetricCard icon="calendar-week" label="This Week" value={weekCount} palette={palette} /><MetricCard icon="chart-bar" label="Total" value={totalCount} palette={palette} /></View>
         <View style={[styles.goalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <View style={[styles.goalIcon, { borderColor: palette.primary }]}><MaterialCommunityIcons name="target" size={19} color={palette.primaryBright} /></View>
-          <View style={styles.goalCopy}><Text style={[styles.goalLabel, { color: palette.foreground }]}>Dhikr Target</Text><Text style={[styles.goalValue, { color: palette.muted }]}>{selectedTarget ? `${selectedCount.toLocaleString()} / ${selectedTarget.toLocaleString()}` : 'Set Target'}</Text></View>
+          <View style={styles.goalCopy}><Text style={[styles.goalLabel, { color: palette.foreground }]}>Dhikr Target</Text><Text style={[styles.goalValue, { color: palette.muted }]}>{selectedTarget ? `${selectedCount.toLocaleString()} / ${selectedTarget.toLocaleString()}` : 'No target'}</Text></View>
           <View style={styles.goalProgressWrap}><View style={[styles.goalTrack, { backgroundColor: palette.surfaceStrong }]}><View style={[styles.goalProgress, { width: `${Math.round(progress * 100)}%`, backgroundColor: palette.primary }]} /></View></View>
           <Text style={[styles.goalPercent, { color: palette.primaryBright }]}>{selectedTarget ? `${Math.round(progress * 100)}%` : '—'}</Text>
         </View>
         <View style={[styles.longPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Text style={[styles.panelEyebrow, { color: palette.primaryBright }]}>ALL-TIME PRACTICE</Text><Text style={[styles.panelTitle, { color: palette.foreground }]}>{totalCount.toLocaleString()} repetitions</Text><Text style={[styles.panelBody, { color: palette.muted }]}>Today and This Week are calculated from locally stored daily totals.</Text></View>
       </View>
-      : <View>{DEFAULT_DHIKR.map((item) => <Pressable key={item.id} onPress={() => onChooseDhikr(item.id)} style={[styles.libraryRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={item.icon} size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{item.arabic}</Text></View><View style={styles.libraryMeta}><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text><Text style={[styles.libraryTarget, { color: palette.muted }]}>{appState.targets[item.id] ? `Target ${appState.targets[item.id]}` : 'No target'}</Text></View></Pressable>)}</View>}
+      : <View>
+        <Pressable testID="add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAddDhikr} style={[styles.plusButton, { backgroundColor: palette.primary, marginBottom: 14 }]}><Feather name="plus" size={18} color={palette.primaryForeground} /><Text style={[styles.plusText, { fontSize: 16 }]}>Add Dhikr</Text></Pressable>
+        {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your library is empty" body="Add a Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, { backgroundColor: palette.card, borderColor: palette.border }]}><Pressable accessibilityRole="button" accessibilityLabel={`Select ${item.name}`} onPress={() => onChooseDhikr(item.id)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{item.arabic || item.translation || 'No description'}</Text></View></Pressable><View style={styles.libraryMeta}><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text><Text style={[styles.libraryTarget, { color: palette.muted }]}>{appState.targets[item.id] ? `Target ${appState.targets[item.id]}` : 'No target'}</Text><View style={{ flexDirection: 'row', gap: 10 }}><Pressable testID={`edit-dhikr-${item.id}`} accessibilityLabel={`Edit ${item.name}`} onPress={() => onEditDhikr(item)}><Feather name="edit-2" size={16} color={palette.primaryBright} /></Pressable><Pressable testID={`delete-dhikr-${item.id}`} accessibilityLabel={`Delete ${item.name}`} onPress={() => onDeleteDhikr(item.id)}><Feather name="trash-2" size={16} color={palette.destructive} /></Pressable></View></View></View>)}
+      </View>}
   </ScrollView>;
 }
 
+function EmptyHome({ palette, onAdd, onSettings }: { palette: Palette; onAdd: () => void; onSettings: () => void }) { const insets = useSafeAreaInsets(); return <View style={{ flex: 1, paddingTop: insets.top + 24, paddingHorizontal: 21, paddingBottom: 100 + Math.max(insets.bottom, 14) }}><View style={styles.topBar}><View style={styles.iconButton} /><Text style={[styles.greetingName, { color: palette.foreground }]}>Tasbeeh Counter</Text><IconButton icon="settings" label="Open settings" onPress={onSettings} palette={palette} /></View><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 }}><MaterialCommunityIcons name="counter" size={48} color={palette.primaryBright} /><Text style={[styles.emptyTitle, { color: palette.foreground }]}>Start your library</Text><Text style={[styles.emptyBody, { color: palette.muted }]}>Add a Dhikr to begin your local practice.</Text><Pressable testID="empty-add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAdd} style={[styles.plusButton, { backgroundColor: palette.primary, marginTop: 18 }]}><Feather name="plus" size={18} color={palette.primaryForeground} /><Text style={[styles.plusText, { fontSize: 16 }]}>Add Dhikr</Text></Pressable></View></View>; }
 function EmptyPanel({ icon, title, body, palette }: { icon: keyof typeof Feather.glyphMap; title: string; body: string; palette: Palette }) { return <View style={[styles.emptyPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Feather name={icon} size={25} color={palette.primaryBright} /><Text style={[styles.emptyTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.emptyBody, { color: palette.muted }]}>{body}</Text></View>; }
 function TabBar({ activeTab, palette, onChange, bottomInset }: { activeTab: Tab; palette: Palette; onChange: (tab: Tab) => void; bottomInset: number }) { const items: Array<{ id: Tab; label: string; icon: keyof typeof Feather.glyphMap }> = [{ id: 'counter', label: 'Counter', icon: 'smartphone' }, { id: 'history', label: 'History', icon: 'bar-chart-2' }, { id: 'stats', label: 'Stats', icon: 'award' }, { id: 'dhikrs', label: 'Dhikrs', icon: 'bookmark' }]; return <View style={[styles.tabBar, { backgroundColor: palette.background, borderTopColor: palette.border, paddingBottom: Math.max(bottomInset, 9) }]}>{items.map((item) => { const active = activeTab === item.id; return <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={'Open ' + item.label} onPress={() => onChange(item.id)} style={({ pressed: p }) => [styles.tabItem, p && styles.pressed]}><Feather name={item.icon} size={21} color={active ? palette.primaryBright : palette.muted} /><Text style={[styles.tabLabel, { color: active ? palette.primaryBright : palette.muted }]}>{item.label}</Text></Pressable>; })}</View>; }
 function IconButton({ icon, label, onPress, palette }: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void; palette: Palette }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed: p }) => [styles.iconButton, { opacity: p ? 0.66 : 1 }]}><Feather name={icon} size={25} color={palette.foreground} /></Pressable>; }
@@ -314,5 +392,5 @@ function SheetHandle({ palette }: { palette: Palette }) { return <View style={[s
 
 const styles = StyleSheet.create({
   root: { flex: 1 }, scrollContent: { paddingHorizontal: 21 }, topBar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, iconButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }, greeting: { alignItems: 'center', gap: 1 }, eyebrow: { fontFamily: 'Inter_400Regular', fontSize: 13 }, greetingName: { fontFamily: 'Inter_700Bold', fontSize: 21 }, sectionLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 2, marginBottom: 9 }, selector: { minHeight: 72, borderRadius: 31, borderWidth: 1, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', position: 'relative', marginTop: 5, marginBottom: 13, shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 15, shadowOffset: { width: 0, height: 7 }, elevation: 6 }, selectorMain: { flex: 1, minHeight: 62, flexDirection: 'row', alignItems: 'center' }, selectorIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' }, selectorCopy: { flex: 1, paddingLeft: 12 }, selectorName: { fontFamily: 'Inter_600SemiBold', fontSize: 16 }, arabic: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 2 }, targetPill: { minHeight: 31, minWidth: 80, borderRadius: 16, paddingHorizontal: 9, marginLeft: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }, targetPillText: { fontFamily: 'Inter_600SemiBold', fontSize: 10 }, selectorProgressTrack: { position: 'absolute', left: 64, right: 13, bottom: 5, height: 3, borderRadius: 2, overflow: 'hidden' }, selectorProgress: { height: '100%', borderRadius: 2 }, hardware: { borderRadius: 74, overflow: 'hidden', alignSelf: 'center', position: 'relative', shadowOpacity: 0.52, shadowRadius: 26, shadowOffset: { width: 0, height: 18 }, elevation: 15 }, hardwareImage: { position: 'absolute', width: '100%', height: '100%', left: 0, top: 0 }, liveDisplay: { position: 'absolute', left: '18%', top: '13%', width: '59%', height: '20%', alignItems: 'flex-end', justifyContent: 'center', paddingRight: 10, overflow: 'hidden' }, ghostDigits: { position: 'absolute', right: 8, top: 5, fontFamily: 'monospace', fontSize: 55, letterSpacing: 1, color: '#AAB2A8', opacity: 0.19 }, hardwareDigits: { color: '#060807', fontFamily: 'monospace', fontSize: 57, fontWeight: '800', letterSpacing: -2 }, deviceLabels: { position: 'absolute', top: '35%', left: '18%', right: '18%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 }, deviceLabel: { color: '#ECEAE7', fontFamily: 'Inter_500Medium', fontSize: 16, letterSpacing: 0.2 }, dialHitArea: { position: 'absolute', left: '14%', top: '61%', width: '72%', height: '38%', borderRadius: 1000 }, dialPressed: { transform: [{ scale: 0.95 }, { translateY: 5 }] }, metricsRow: { flexDirection: 'row', gap: 9, marginTop: 12 }, metricCard: { flex: 1, minHeight: 88, borderRadius: 17, borderWidth: 1, padding: 12, justifyContent: 'space-between' }, metricLabel: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4 }, metricValue: { fontFamily: 'Inter_700Bold', fontSize: 20, marginTop: 4 }, metricUnderline: { width: 28, height: 2, marginTop: 4 }, goalCard: { minHeight: 62, borderRadius: 16, borderWidth: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 9 }, goalIcon: { width: 33, height: 33, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' }, goalCopy: { width: 80 }, goalLabel: { fontFamily: 'Inter_500Medium', fontSize: 12 }, goalValue: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 3 }, goalProgressWrap: { flex: 1 }, goalTrack: { height: 7, borderRadius: 4, overflow: 'hidden' }, goalProgress: { height: '100%', borderRadius: 4 }, goalPercent: { fontFamily: 'Inter_500Medium', fontSize: 12 }, actionBar: { minHeight: 69, borderRadius: 35, borderWidth: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 11 }, actionItem: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 7, minHeight: 44 }, actionDivider: { width: 1, height: 35 }, actionText: { fontFamily: 'Inter_500Medium', fontSize: 12 }, plusButton: { width: 168, height: 54, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 7 }, elevation: 8 }, plusText: { color: '#FFFFFF', fontFamily: 'Inter_700Bold', fontSize: 25 }, pressed: { opacity: 0.6, transform: [{ scale: 0.97 }] }, offlineNote: { fontFamily: 'Inter_400Regular', fontSize: 11, textAlign: 'center', marginTop: 14 }, tabBar: { position: 'absolute', bottom: 0, left: 0, right: 0, minHeight: 74, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 8 }, tabItem: { alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 62 }, tabLabel: { fontFamily: 'Inter_500Medium', fontSize: 11 }, secondaryContent: { paddingHorizontal: 21 }, secondaryHeader: { marginBottom: 18 }, secondaryTitle: { fontFamily: 'Inter_700Bold', fontSize: 28 }, secondarySubtitle: { fontFamily: 'Inter_400Regular', fontSize: 13, marginTop: 6 }, historyRow: { minHeight: 68, borderRadius: 17, borderWidth: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 9 }, historyIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, historyCopy: { flex: 1, paddingLeft: 11 }, historyName: { fontFamily: 'Inter_600SemiBold', fontSize: 14 }, historyTime: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 4 }, historyCount: { fontFamily: 'Inter_700Bold', fontSize: 16 }, libraryRow: { minHeight: 68, borderRadius: 17, borderWidth: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 9 }, libraryMeta: { alignItems: 'flex-end', gap: 3 }, libraryTarget: { fontFamily: 'Inter_400Regular', fontSize: 10 }, statsGrid: { flexDirection: 'row', gap: 10 }, longPanel: { borderRadius: 20, borderWidth: 1, padding: 20, marginTop: 12 }, panelEyebrow: { fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 2 }, panelTitle: { fontFamily: 'Inter_700Bold', fontSize: 24, marginTop: 14 }, panelBody: { fontFamily: 'Inter_400Regular', fontSize: 13, marginTop: 6 }, emptyPanel: { minHeight: 190, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 25 }, emptyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 16, marginTop: 13 }, emptyBody: { fontFamily: 'Inter_400Regular', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 7, maxWidth: 250 },
-  modalRoot: { flex: 1, justifyContent: 'flex-end' }, modalBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.72)' }, sheet: { borderTopLeftRadius: 31, borderTopRightRadius: 31, borderWidth: 1, padding: 20, paddingTop: 12 }, sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 19 }, sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }, sheetTitle: { fontFamily: 'Inter_700Bold', fontSize: 24, letterSpacing: -0.5 }, sheetSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4 }, closeButton: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, option: { minHeight: 62, borderRadius: 17, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, marginTop: 9 }, optionIcon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, optionCopy: { flex: 1, paddingLeft: 11 }, optionName: { fontFamily: 'Inter_600SemiBold', fontSize: 14 }, optionArabic: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 4 }, optionMeta: { alignItems: 'flex-end', gap: 5, paddingLeft: 8 }, optionCount: { fontFamily: 'Inter_600SemiBold', fontSize: 12, letterSpacing: 1 }, optionNumber: { fontFamily: 'Inter_500Medium', fontSize: 10, letterSpacing: 1 }, targetPresetRow: { flexDirection: 'row', gap: 8 }, targetPreset: { flex: 1, minHeight: 48, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }, targetPresetText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 }, customTargetRow: { flexDirection: 'row', gap: 9, marginTop: 12 }, customTargetInput: { flex: 1, minHeight: 49, borderRadius: 15, borderWidth: 1, paddingHorizontal: 14, fontFamily: 'Inter_500Medium', fontSize: 15 }, customTargetSave: { width: 80, minHeight: 49, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, targetHint: { fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 17, marginTop: 14 }, settingsRoot: { flex: 1, paddingHorizontal: 20 }, settingsHeader: { minHeight: 73, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, settingsScroll: { paddingTop: 14, paddingBottom: 30 }, settingsSection: { marginBottom: 22 }, settingsGroup: { borderRadius: 23, borderWidth: 1, paddingHorizontal: 15 }, settingDivider: { height: 1, marginLeft: 48 }, settingRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 12 }, settingIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, settingLabel: { fontFamily: 'Inter_500Medium', fontSize: 15, flex: 1 }, themeRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12 }, segmented: { flexDirection: 'row', borderRadius: 13, padding: 3, gap: 2 }, segment: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10 }, segmentText: { fontFamily: 'Inter_500Medium', fontSize: 11 }, settingInfoRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12 }, settingHint: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 4 }, aboutRow: { minHeight: 82, flexDirection: 'row', alignItems: 'center' }, aboutMark: { width: 45, height: 45, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, aboutCopy: { flex: 1, paddingLeft: 12 }, aboutTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 15 }, aboutBody: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4 }, version: { fontFamily: 'Inter_500Medium', fontSize: 11 }, menuRoot: { flex: 1 }, menuCard: { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, padding: 14, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 10 }, menuBrandRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: 13 }, menuMark: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 11 }, menuTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14 }, menuSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 3 }, menuAction: { minHeight: 48, borderRadius: 15, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 12 }, menuActionText: { fontFamily: 'Inter_500Medium', fontSize: 14, flex: 1 }, confirmRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 22 }, confirmCard: { width: '100%', borderRadius: 27, borderWidth: 1, padding: 22, alignItems: 'center' }, confirmIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }, confirmTitle: { fontFamily: 'Inter_700Bold', fontSize: 20 }, confirmBody: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8, maxWidth: 250 }, confirmActions: { width: '100%', flexDirection: 'row', gap: 9, marginTop: 22 }, confirmButton: { flex: 1, minHeight: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, confirmButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' }, modalBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.72)' }, sheet: { borderTopLeftRadius: 31, borderTopRightRadius: 31, borderWidth: 1, padding: 20, paddingTop: 12 }, dhikrFormSheet: { maxHeight: '92%' }, dhikrFormContent: { gap: 10, paddingBottom: 4 }, formSubmit: { minHeight: 49, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 4 }, sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 19 }, sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }, sheetTitle: { fontFamily: 'Inter_700Bold', fontSize: 24, letterSpacing: -0.5 }, sheetSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4 }, closeButton: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, option: { minHeight: 62, borderRadius: 17, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, marginTop: 9 }, optionIcon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, optionCopy: { flex: 1, paddingLeft: 11 }, optionName: { fontFamily: 'Inter_600SemiBold', fontSize: 14 }, optionArabic: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 4 }, optionMeta: { alignItems: 'flex-end', gap: 5, paddingLeft: 8 }, optionCount: { fontFamily: 'Inter_600SemiBold', fontSize: 12, letterSpacing: 1 }, optionNumber: { fontFamily: 'Inter_500Medium', fontSize: 10, letterSpacing: 1 }, targetPresetRow: { flexDirection: 'row', gap: 8 }, targetPreset: { flex: 1, minHeight: 48, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }, targetPresetText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 }, customTargetRow: { flexDirection: 'row', gap: 9, marginTop: 12 }, customTargetInput: { flex: 1, minHeight: 49, borderRadius: 15, borderWidth: 1, paddingHorizontal: 14, fontFamily: 'Inter_500Medium', fontSize: 15 }, customTargetSave: { width: 80, minHeight: 49, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, targetHint: { fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 17, marginTop: 14 }, settingsRoot: { flex: 1, paddingHorizontal: 20 }, settingsHeader: { minHeight: 73, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, settingsScroll: { paddingTop: 14, paddingBottom: 30 }, settingsSection: { marginBottom: 22 }, settingsGroup: { borderRadius: 23, borderWidth: 1, paddingHorizontal: 15 }, settingDivider: { height: 1, marginLeft: 48 }, settingRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 12 }, settingIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, settingLabel: { fontFamily: 'Inter_500Medium', fontSize: 15, flex: 1 }, themeRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12 }, segmented: { flexDirection: 'row', borderRadius: 13, padding: 3, gap: 2 }, segment: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10 }, segmentText: { fontFamily: 'Inter_500Medium', fontSize: 11 }, settingInfoRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12 }, settingHint: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 4 }, aboutRow: { minHeight: 82, flexDirection: 'row', alignItems: 'center' }, aboutMark: { width: 45, height: 45, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, aboutCopy: { flex: 1, paddingLeft: 12 }, aboutTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 15 }, aboutBody: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4 }, version: { fontFamily: 'Inter_500Medium', fontSize: 11 }, menuRoot: { flex: 1 }, menuCard: { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, padding: 14, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 10 }, menuBrandRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: 13 }, menuMark: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 11 }, menuTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14 }, menuSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 3 }, menuAction: { minHeight: 48, borderRadius: 15, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 12 }, menuActionText: { fontFamily: 'Inter_500Medium', fontSize: 14, flex: 1 }, confirmRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 22 }, confirmCard: { width: '100%', borderRadius: 27, borderWidth: 1, padding: 22, alignItems: 'center' }, confirmIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 15 }, confirmTitle: { fontFamily: 'Inter_700Bold', fontSize: 20 }, confirmBody: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8, maxWidth: 250 }, confirmActions: { width: '100%', flexDirection: 'row', gap: 9, marginTop: 22 }, confirmButton: { flex: 1, minHeight: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, confirmButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });
