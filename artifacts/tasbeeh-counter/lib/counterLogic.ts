@@ -140,8 +140,12 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
   ) as Record<string, Record<string, number>>;
   const hasDurableDhikrTotals = isRecord(parsed.lifetimeCountsByDhikr);
   if (!hasDurableDhikrTotals) {
-    Object.values(dailyCountsByDhikr).forEach((entries) => {
-      Object.entries(entries).forEach(([date, count]) => { dailyCounts[date] = (dailyCounts[date] ?? 0) + count; });
+    const reconstructedDailyCounts = Object.values(dailyCountsByDhikr).reduce<Record<string, number>>((totals, entries) => {
+      Object.entries(entries).forEach(([date, count]) => { totals[date] = (totals[date] ?? 0) + count; });
+      return totals;
+    }, {});
+    Object.entries(reconstructedDailyCounts).forEach(([date, count]) => {
+      if (dailyCounts[date] === undefined) dailyCounts[date] = count;
     });
   }
   const counterSum = Object.values(counters).reduce((sum, count) => sum + count, 0);

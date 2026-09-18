@@ -1,0 +1,69 @@
+Make ONLY the final reliability fixes below.
+
+IMPORTANT:
+- Do NOT redesign the UI.
+- Do NOT change themes.
+- Do NOT change navigation.
+- Do NOT remove or weaken target-completion feedback.
+- Preserve all existing functionality.
+
+1. TARGET COMPLETION VIBRATION — MUST REMAIN ENABLED
+
+Target completion MUST vibrate when the target is hit.
+
+This is an intentional product requirement.
+
+When the exact target is reached:
+- Play the existing target-completion sound.
+- Trigger the existing target-completion haptic/vibration.
+- Show the existing visual feedback.
+- Execute the target-completion feedback only once at the exact target.
+- If a milestone and target occur together, target-completion feedback takes precedence.
+
+Do NOT remove or disable the target-hit vibration because of the general Vibration setting.
+
+The target-hit vibration is REQUIRED even if the user has disabled normal counting haptics.
+
+However:
+- Normal tap haptics should still respect the Vibration setting.
+- Milestone haptics should respect the Vibration setting.
+- Target completion haptic must remain enabled because it is an important completion alert.
+
+2. RESET HAPTIC
+
+The Reset button haptic should respect the Vibration setting.
+
+If Vibration is OFF:
+- Reset should not trigger haptic feedback.
+
+If Vibration is ON:
+- Preserve the current Reset haptic.
+
+3. LEGACY MIGRATION DAILY COUNTS
+
+Fix the migration logic so dailyCounts is never double-counted.
+
+Rules:
+- If dailyCounts already contains a date, preserve its existing aggregate value.
+- Only reconstruct a missing dailyCounts date from dailyCountsByDhikr.
+- Do not blindly add per-Dhikr totals to an existing daily aggregate.
+- Preserve all valid existing user data.
+- Do not alter current-version data.
+
+Add/update tests for:
+- Existing daily aggregate + per-Dhikr data does not double count.
+- Missing daily aggregate can be reconstructed from per-Dhikr data.
+- Current-version state remains unchanged.
+
+4. VERIFICATION
+
+Run all existing tests.
+Run the migration tests.
+Run TypeScript/typecheck if available.
+
+Report exactly:
+- files changed
+- tests passed/failed
+- any remaining issues
+
+Do not make any other changes.

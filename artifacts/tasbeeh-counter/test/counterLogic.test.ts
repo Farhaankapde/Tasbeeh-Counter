@@ -134,7 +134,7 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
   assert.equal(migrated.theme, 'light');
   assert.equal(migrated.accentTheme, 'blue');
   assert.equal(migrated.lifetimeCount, stored.lifetimeCount);
-  assert.deepEqual(migrated.dailyCounts, { '2026-09-17': 5, '2026-09-18': 6 });
+  assert.deepEqual(migrated.dailyCounts, { '2026-09-17': 5, '2026-09-18': 4 });
   assert.deepEqual(migrated.dailyCountsByDhikr, stored.dailyCountsByDhikr);
   assert.deepEqual(migrated.lifetimeCountsByDhikr, {
     subhanallah: 12,
@@ -223,8 +223,8 @@ test('a legacy six-Dhikr record survives an AsyncStorage-shaped app restart', as
     stored.history[1],
   ]);
   assert.deepEqual(calculateStats(hydrated.dailyCounts, hydrated.lifetimeCount, new Date(2026, 8, 18, 12), hydrated.dailyCountsByDhikr), {
-    today: 7,
-    thisWeek: 12,
+    today: 4,
+    thisWeek: 9,
     total: 500,
   });
 });
@@ -233,6 +233,38 @@ test('migration keeps a current empty library empty', () => {
   const migrated = migrateStoredState({ dhikrs: [], selectedId: 'missing' }, DEFAULT_STATE, LEGACY_DHIKRS);
   assert.deepEqual(migrated.dhikrs, []);
   assert.equal(migrated.selectedId, '');
+});
+
+test('legacy migration reconstructs only missing daily aggregate dates', () => {
+  const migrated = migrateStoredState({
+    ...DEFAULT_STATE,
+    dhikrs: LEGACY_DHIKRS.slice(0, 2),
+    dailyCounts: { '2026-09-17': 5 },
+    dailyCountsByDhikr: {
+      subhanallah: { '2026-09-17': 2, '2026-09-18': 3 },
+      alhamdulillah: { '2026-09-18': 4 },
+    },
+    lifetimeCountsByDhikr: undefined,
+  }, DEFAULT_STATE, LEGACY_DHIKRS);
+
+  assert.deepEqual(migrated.dailyCounts, {
+    '2026-09-17': 5,
+    '2026-09-18': 7,
+  });
+});
+
+test('current-version daily aggregates remain unchanged during migration', () => {
+  const currentVersionState = {
+    ...DEFAULT_STATE,
+    dhikrs: LEGACY_DHIKRS.slice(0, 1),
+    dailyCounts: { '2026-09-18': 4 },
+    dailyCountsByDhikr: { subhanallah: { '2026-09-18': 2 } },
+    lifetimeCountsByDhikr: { subhanallah: 12 },
+  };
+  const migrated = migrateStoredState(currentVersionState, DEFAULT_STATE, LEGACY_DHIKRS);
+
+  assert.deepEqual(migrated.dailyCounts, currentVersionState.dailyCounts);
+  assert.deepEqual(migrated.dailyCountsByDhikr, currentVersionState.dailyCountsByDhikr);
 });
 
 test('aggregate daily totals take precedence over per-Dhikr copies', () => {
