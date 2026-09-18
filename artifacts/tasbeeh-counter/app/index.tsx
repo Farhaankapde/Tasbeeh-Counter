@@ -7,7 +7,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type HistoryEntry, type PracticeSnapshot } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type PracticeSnapshot } from '@/lib/counterLogic';
+import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
@@ -377,30 +378,6 @@ function formatHistoryDate(date?: string) {
   const [year, month, day] = date.split('-').map(Number);
   if (![year, month, day].every(Number.isFinite)) return date;
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(year, month - 1, day));
-}
-
-type HistoryGroup = { key: string; dateKey?: string; dhikr: string; entries: HistoryEntry[] };
-
-function getHistoryDateSection(date?: string) {
-  if (!date) return 'EARLIER';
-  const today = getLocalDateKey();
-  if (date === today) return 'TODAY';
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  return date === getLocalDateKey(yesterdayDate) ? 'YESTERDAY' : 'EARLIER';
-}
-
-function groupHistoryEntries(history: HistoryEntry[], dhikrs: DhikrRecord[]) {
-  const groups = new Map<string, HistoryGroup>();
-  history.forEach((entry) => {
-    const currentName = dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr;
-    const identity = entry.dhikrId ?? `name:${entry.dhikr.trim().toLocaleLowerCase()}`;
-    const key = `${entry.date ?? 'previous'}:${identity}`;
-    const existing = groups.get(key);
-    if (existing) existing.entries.push(entry);
-    else groups.set(key, { key, dateKey: entry.date, dhikr: currentName, entries: [entry] });
-  });
-  return Array.from(groups.values());
 }
 
 function lifetimeTotalForDhikr(appState: AppState, id: string) {
