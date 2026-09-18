@@ -356,7 +356,7 @@ export default function HomeScreen() {
            </View> : null}
            {selectedTarget ? <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><Animated.View style={[styles.selectorProgress, { width: animatedProgressWidth, backgroundColor: completionFlash ? palette.primaryBright : palette.primary, shadowColor: palette.primaryBright }]} /></View> : null}
         </View>
-          <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={styles.deviceContactShadow} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
+          <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
          <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
          <View style={[styles.referenceActions, compactCounter && styles.referenceActionsCompact, { gap: 8 }]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.resetAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, borderColor: palette.border, backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(20, 20, 20, 0.82)' }, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.foreground} /><Text style={[styles.referenceActionText, { color: palette.foreground }]}>Reset</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Save count now" onPress={saveNow} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.saveAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, backgroundColor: savedFlash ? palette.primaryBright : palette.primary, borderColor: palette.primaryBright }, p && styles.pressed]}><Feather name={savedFlash ? 'check' : 'save'} size={20} color={palette.primaryForeground} /><Text style={[styles.referenceActionText, { color: palette.primaryForeground }]}>{savedFlash ? 'Saved' : 'Save'}</Text></Pressable></View>
          </View>
@@ -401,21 +401,21 @@ export default function HomeScreen() {
 function HardwareCounter({ count, width, palette, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
-    <Image source={require('../assets/images/realistic-counter-polished.png')} blurRadius={12} tintColor="#FF1C28" resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
-    <Image source={require('../assets/images/realistic-counter-polished.png')} resizeMode="contain" style={styles.hardwareImage} />
+    <Image source={COUNTER_IMAGE} blurRadius={12} tintColor="#FF1C28" resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
+    <Image source={COUNTER_IMAGE} resizeMode="contain" style={styles.hardwareImage} />
     <View pointerEvents="none" style={styles.lcdGlass} />
     <View style={styles.liveDisplay}>
       <Text style={styles.ghostDigits}>888</Text>
       <Animated.Text style={[styles.hardwareDigits, { transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <View pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed]} />
-    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed]} />
+    <View pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed, pressed && { transform: [{ scale: 0.96 }] }]} />
+    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed, pressed && { transform: [{ scale: 0.95 }] }]} />
   </View>;
 }
 
 function CounterAtmosphere({ dark }: { dark: boolean }) {
   return <View pointerEvents="none" style={styles.counterAtmosphere}>
-    {dark ? <Image source={require('../assets/images/tasbeeh-cinematic-background.png')} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#f1ece7', '#d8d0c8', '#efe9e4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
+    {dark ? <Image source={CINEMATIC_BACKGROUND} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#f1ece7', '#d8d0c8', '#efe9e4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
     <LinearGradient colors={dark ? ['rgba(5, 5, 5, 0.36)', 'rgba(5, 5, 5, 0.03)', 'rgba(5, 5, 5, 0.58)'] : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)', 'rgba(30,20,16,0.08)']} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} />
     <View style={[styles.atmosphereVignette, { borderColor: dark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(55, 39, 30, 0.08)' }]} />
   </View>;
