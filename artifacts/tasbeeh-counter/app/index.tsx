@@ -41,7 +41,6 @@ export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [pressed, setPressed] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
   const [dhikrEditorOpen, setDhikrEditorOpen] = useState(false);
   const [editingDhikrId, setEditingDhikrId] = useState<string | null>(null);
   const [dhikrNameDraft, setDhikrNameDraft] = useState('');
@@ -329,14 +328,6 @@ export default function HomeScreen() {
     });
     setDeleteDhikrId(null);
   };
-  const saveNow = async () => {
-    const state = appStateRef.current;
-    savedPractice.current = getPracticeSnapshot(state);
-    await queuePersist(state);
-    activeHistorySessionId.current = null;
-    setSavedFlash(true);
-    setTimeout(() => setSavedFlash(false), 1500);
-  };
 
   return (
     <LinearGradient colors={appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
@@ -359,7 +350,7 @@ export default function HomeScreen() {
         </View>
           <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
          <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
-         <View style={[styles.referenceActions, compactCounter && styles.referenceActionsCompact, { gap: 8 }]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.resetAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, borderColor: palette.border, backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(20, 20, 20, 0.82)' }, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.foreground} /><Text style={[styles.referenceActionText, { color: palette.foreground }]}>Reset</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Save count now" onPress={saveNow} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.saveAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, backgroundColor: savedFlash ? palette.primaryBright : palette.primary, borderColor: palette.primaryBright, shadowColor: palette.primaryBright }, p && styles.pressed]}><Feather name={savedFlash ? 'check' : 'save'} size={20} color={palette.primaryForeground} /><Text style={[styles.referenceActionText, { color: palette.primaryForeground }]}>{savedFlash ? 'Saved' : 'Save'}</Text></Pressable></View>
+          <View style={[styles.referenceActions, compactCounter && styles.referenceActionsCompact]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.resetAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, borderColor: palette.border, backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(20, 20, 20, 0.82)' }, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.foreground} /><Text style={[styles.referenceActionText, { color: palette.foreground }]}>Reset</Text></Pressable></View>
          </View>
            </View> : <EmptyHome palette={palette} onAdd={() => { setActiveTab('dhikrs'); openDhikrEditor(); }} onSettings={() => setSettingsOpen(true)} /> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} onChooseDhikr={chooseDhikr} onAddDhikr={() => openDhikrEditor()} onEditDhikr={openDhikrEditor} onDeleteDhikr={setDeleteDhikrId} />}
       <TabBar activeTab={activeTab} palette={palette} onChange={setActiveTab} bottomInset={insets.bottom} />
