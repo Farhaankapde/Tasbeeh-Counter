@@ -378,7 +378,8 @@ export default function HomeScreen() {
 
 function HardwareCounter({ count, width, palette, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
-  return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, shadowColor: completionFlash ? palette.primaryBright : '#FF1F2E', shadowOpacity: completionFlash ? 0.72 : 0.38, shadowRadius: completionFlash ? 34 : 22 }]}>
+  return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
+    <Image source={require('../assets/images/realistic-counter-polished.png')} blurRadius={12} tintColor="#FF1C28" resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
     <Image source={require('../assets/images/realistic-counter-polished.png')} resizeMode="contain" style={styles.hardwareImage} />
     <View pointerEvents="none" style={styles.lcdGlass} />
     <View style={styles.liveDisplay}>
