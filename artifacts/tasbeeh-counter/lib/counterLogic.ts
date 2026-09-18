@@ -18,7 +18,24 @@ export type AppState = {
   history: HistoryEntry[];
 };
 
+export type PracticeSnapshot = Pick<AppState, 'counters' | 'dailyCounts' | 'dailyCountsByDhikr' | 'lifetimeCount' | 'history'>;
+
 export const MILESTONES = [33, 99, 100] as const;
+
+export function getPracticeSnapshot(state: AppState): PracticeSnapshot {
+  return {
+    counters: state.counters,
+    dailyCounts: state.dailyCounts,
+    dailyCountsByDhikr: state.dailyCountsByDhikr,
+    lifetimeCount: state.lifetimeCount,
+    history: state.history,
+  };
+}
+
+export function getStateForPersistence(state: AppState, savedPractice: PracticeSnapshot): AppState {
+  const practice = state.autoSave ? getPracticeSnapshot(state) : savedPractice;
+  return { ...state, ...practice };
+}
 
 export function shouldStopCounting(count: number, target: number | null, stopAtTarget: boolean) {
   return stopAtTarget && target !== null && count >= target;

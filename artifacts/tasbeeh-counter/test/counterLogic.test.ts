@@ -4,6 +4,8 @@ import {
   calculateStats,
   canAcceptCount,
   getCountFeedback,
+  getPracticeSnapshot,
+  getStateForPersistence,
   migrateStoredState,
   restoreStoredState,
   shouldStopCounting,
@@ -147,4 +149,51 @@ test('counting waits for hydration, stops at a target, and honors maximum count'
   assert.equal(canAcceptCount(10, 10, false, true), true);
   assert.equal(canAcceptCount(999998, null, false, true), true);
   assert.equal(canAcceptCount(999999, null, false, true), false);
+});
+
+test('manual save keeps unsaved practice separate from library and settings changes', () => {
+  const savedState: AppState = {
+    ...DEFAULT_STATE,
+    dhikrs: [{ id: 'subhanallah', name: 'SubhanAllah', icon: 'circle-double' }],
+    selectedId: 'subhanallah',
+    counters: { subhanallah: 12 },
+    dailyCounts: { '2026-09-18': 12 },
+    dailyCountsByDhikr: { subhanallah: { '2026-09-18': 12 } },
+    lifetimeCount: 12,
+    autoSave: false,
+    history: [{ id: 'session-1', dhikr: 'SubhanAllah', dhikrId: 'subhanallah', repetitions: 12, time: '8:15 AM', date: '2026-09-18' }],
+  };
+  const savedPractice = getPracticeSnapshot(savedState);
+  const unsavedState: AppState = {
+    ...savedState,
+    dhikrs: [{ ...savedState.dhikrs[0], name: 'Morning SubhanAllah' }],
+    vibration: false,
+    counters: { subhanallah: 19 },
+    dailyCounts: { '2026-09-18': 19 },
+    dailyCountsByDhikr: { subhanallah: { '2026-09-18': 19 } },
+    lifetimeCount: 19,
+    history: [{ ...savedState.history[0], repetitions: 19, time: '8:30 AM' }],
+  };
+
+  const persistedBeforeSave = getStateForPersistence(unsavedState, savedPractice);
+
+  assert.deepEqual(persistedBeforeSave.counters, savedState.counters);
+  assert.deepEqual(persistedBeforeSave.dailyCounts, savedState.dailyCounts);
+  assert.deepEqual(persistedBeforeSave.dailyCountsByDhikr, savedState.dailyCountsByDhikr);
+  assert.equal(persistedBeforeSave.lifetimeCount, savedState.lifetimeCount);
+  assert.deepEqual(persistedBeforeSave.history, savedState.history);
+  assert.deepEqual(persistedBeforeSave.dhikrs, unsavedState.dhikrs);
+  assert.equal(persistedBeforeSave.vibration, false);
+
+  const savedPracticeAfterPressingSave = getPracticeSnapshot(unsavedState);
+  const persistedAfterSave = getStateForPersistence(unsavedState, savedPracticeAfterPressingSave);
+  const hydratedAfterSave = restoreStoredState(persistedAfterSave, DEFAULT_STATE);
+
+  assert.deepEqual(hydratedAfterSave.counters, unsavedState.counters);
+  assert.deepEqual(hydratedAfterSave.dailyCounts, unsavedState.dailyCounts);
+  assert.deepEqual(hydratedAfterSave.dailyCountsByDhikr, unsavedState.dailyCountsByDhikr);
+  assert.equal(hydratedAfterSave.lifetimeCount, unsavedState.lifetimeCount);
+  assert.deepEqual(hydratedAfterSave.history, unsavedState.history);
+  assert.deepEqual(hydratedAfterSave.dhikrs, unsavedState.dhikrs);
+  assert.equal(hydratedAfterSave.vibration, false);
 });

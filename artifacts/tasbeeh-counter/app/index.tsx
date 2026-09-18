@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, restoreStoredState, type AppState, type DhikrRecord } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, getPracticeSnapshot, getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type PracticeSnapshot } from '@/lib/counterLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
@@ -20,9 +20,6 @@ const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
 ];
 const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', history: [] };
-type PracticeSnapshot = Pick<AppState, 'counters' | 'dailyCounts' | 'dailyCountsByDhikr' | 'lifetimeCount' | 'history'>;
-const getPracticeSnapshot = (state: AppState): PracticeSnapshot => ({ counters: state.counters, dailyCounts: state.dailyCounts, dailyCountsByDhikr: state.dailyCountsByDhikr, lifetimeCount: state.lifetimeCount, history: state.history });
-
 type Palette = typeof colors.dark | typeof colors.light;
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
@@ -131,9 +128,8 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const practice = appState.autoSave ? getPracticeSnapshot(appState) : savedPractice.current;
-    if (appState.autoSave) savedPractice.current = practice;
-    void queuePersist({ ...appState, ...practice });
+    if (appState.autoSave) savedPractice.current = getPracticeSnapshot(appState);
+    void queuePersist(getStateForPersistence(appState, savedPractice.current));
   }, [appState, hydrated]);
 
   const playClick = async () => {
