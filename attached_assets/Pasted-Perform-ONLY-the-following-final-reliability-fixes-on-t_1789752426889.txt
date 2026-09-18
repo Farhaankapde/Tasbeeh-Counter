@@ -1,0 +1,144 @@
+Perform ONLY the following final reliability fixes on the current Tasbeeh Counter app.
+
+IMPORTANT:
+- Do NOT redesign the UI.
+- Do NOT change the Counter visual design.
+- Do NOT change the themes.
+- Do NOT change navigation.
+- Do NOT add features.
+- Do NOT modify the offline architecture.
+- Preserve all existing user data.
+- Make only the fixes listed below.
+
+1. HISTORY DATA RETENTION
+
+Current problem:
+History is capped to 30 entries using:
+.slice(0, 30)
+
+This permanently deletes older session records.
+
+REMOVE this history limit.
+
+Every individual History session must remain persisted indefinitely unless the user explicitly deletes the entire app data.
+
+Keep the existing grouped History UI exactly as it is.
+
+Do not merge or delete underlying sessions.
+
+2. AUTO-SAVE RELIABILITY
+
+Keep automatic persistence.
+
+Improve the persistence mechanism so rapid taps do not create a long queue of stale full-state writes.
+
+Use a coalescing/latest-state persistence strategy:
+- UI count must update immediately.
+- Keep only the latest pending state when multiple writes are waiting.
+- Preserve write ordering and data integrity.
+- Background/inactive lifecycle should flush the latest state.
+- Reset must persist immediately.
+- Switching Dhikrs/settings/themes must continue to persist.
+- Do not add a backend or new storage dependency.
+
+Specifically verify:
+- Count once -> immediately background/close -> latest count restored.
+- Rapidly count many times -> immediately background/close -> final count restored.
+- Restart -> latest count restored.
+
+3. PHYSICAL LCD DIGIT SCALING
+
+The counter supports counts up to 999999, but the current LCD text uses a fixed font size.
+
+Make the LCD count dynamically scale so 3, 4, 5 and 6 digit values remain completely visible without clipping.
+
+Examples:
+093
+999
+1000
+9999
+10000
+99999
+100000
+999999
+
+Preserve the existing realistic LCD appearance.
+
+Do not change the physical device image.
+
+4. BY-DHIKR LIFETIME TOTALS
+
+Ensure lifetime repetition totals are reliable for every Dhikr, including migrated/older users.
+
+Do not rely only on dailyCountsByDhikr being complete.
+
+Use a durable per-Dhikr lifetime total if necessary.
+
+On every accepted count:
+- increment the current counter
+- increment today's total
+- increment this week's source data
+- increment global lifetime total
+- increment that Dhikr's lifetime total
+- update History
+
+Deleting a Dhikr must NOT delete its historical data or lifetime totals needed by History.
+
+Existing user data must be preserved.
+
+5. SAFE HISTORY MIGRATION
+
+Validate migrated History entries before storing them.
+
+Malformed entries must not be allowed to crash the History screen.
+
+Do not fabricate dates or times.
+
+Preserve valid legacy entries.
+
+Do not silently wipe valid existing data because one entry is malformed.
+
+6. HISTORY SESSION BOUNDARY
+
+When the user changes the selected Dhikr, treat that as a session boundary.
+
+If the user leaves a Dhikr and later comes back, a new counting session should begin.
+
+Do not merge separate sessions merely because the same Dhikr is selected again.
+
+7. REMOVE UNUSED "COUNTER SIZE" SETTING
+
+The Settings screen currently displays:
+"Counter size"
+"Large and easy to read"
+
+There is no actual control.
+
+Remove this non-functional row.
+
+Do not add a replacement setting.
+
+FINAL VERIFICATION
+
+After implementation:
+
+- Run all existing tests.
+- Add/update tests for:
+  - more than 30 history sessions
+  - rapid count persistence
+  - immediate background/restart persistence
+  - 6 digit counter display logic
+  - lifetime totals by Dhikr
+  - migration safety
+  - Dhikr switching session boundaries
+- Run TypeScript/typecheck.
+- Run Android production build checks if available.
+
+Report:
+- exact files changed
+- tests added/updated
+- test results
+- build/typecheck results
+- any remaining known issues
+
+Do not make any other changes.
