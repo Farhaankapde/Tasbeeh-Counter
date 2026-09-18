@@ -1,3 +1,4 @@
 - [Expo preview environment](expo-preview.md) — optional React Native DevTools may warn about missing libglib while the Expo preview remains healthy.
 - [Expo web state checks](expo-web-state-checks.md) — persisted browser storage can mask seeded UI states; isolate visual checks with a temporary storage key and restore it afterward.
 - [React Native UI tests](react-native-ui-tests.md) — Node-based Expo UI tests need the pure RNTL entry and mocked native modules.
+- [Large Expo stylesheets](large-expo-stylesheets.md) — make narrowly targeted edits to the app’s long single-line StyleSheet blocks to avoid dropping adjacent definitions.
