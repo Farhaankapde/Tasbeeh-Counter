@@ -40,9 +40,34 @@ const DEFAULT_STATE: AppState = {
   history: [],
 };
 
+const STORAGE_KEY = 'tasbeeh-counter-state-v1';
+
+async function simulateAppRestart(storage: Map<string, string>, legacyDhikrs = LEGACY_DHIKRS) {
+  // This mirrors the app's AsyncStorage boundary: persistence stores JSON text,
+  // then a fresh app instance reads and parses that text before hydration.
+  const raw = await Promise.resolve(storage.get(STORAGE_KEY) ?? null);
+  return restoreStoredState(raw ? JSON.parse(raw) as unknown : null, DEFAULT_STATE, legacyDhikrs);
+}
+
 test('a fresh install restores the empty library instead of legacy Dhikrs', () => {
   assert.deepEqual(restoreStoredState(null, DEFAULT_STATE, LEGACY_DHIKRS), DEFAULT_STATE);
   assert.deepEqual(restoreStoredState(undefined, DEFAULT_STATE, LEGACY_DHIKRS), DEFAULT_STATE);
+});
+
+test('a fresh install remains empty after an app restart and keeps the loading gate', async () => {
+  const hydrated = await simulateAppRestart(new Map());
+
+  assert.equal(canAcceptCount(0, null, false, false), false);
+  assert.deepEqual(hydrated.dhikrs, []);
+  assert.equal(hydrated.selectedId, '');
+  assert.deepEqual(hydrated.counters, {});
+  assert.deepEqual(hydrated.history, []);
+  assert.equal(hydrated.lifetimeCount, 0);
+  assert.equal(hydrated.theme, 'dark');
+  assert.equal(hydrated.vibration, true);
+  assert.equal(hydrated.sound, true);
+  assert.equal(hydrated.autoSave, true);
+  assert.equal(canAcceptCount(0, null, false, true), true);
 });
 
 test('legacy six-Dhikr state preserves records, practice, selection, settings, history, and totals', () => {
@@ -107,6 +132,75 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
     { ...matchedHistory, dhikrId: 'subhanallah' },
     unmatchedHistory,
   ]);
+});
+
+test('a legacy six-Dhikr record survives an AsyncStorage-shaped app restart', async () => {
+  const stored = {
+    selectedId: 'astaghfirullah',
+    counters: {
+      subhanallah: 12,
+      alhamdulillah: 7,
+      'allahu-akbar': 3,
+      'la-ilaha': 1,
+      astaghfirullah: 9,
+      subhanallahi: 5,
+    },
+    targets: {
+      subhanallah: 33,
+      'allahu-akbar': null,
+      astaghfirullah: 99,
+    },
+    dailyCounts: { '2026-09-17': 5, '2026-09-18': 4 },
+    dailyCountsByDhikr: {
+      subhanallah: { '2026-09-18': 2 },
+      astaghfirullah: { '2026-09-18': 1 },
+    },
+    lifetimeCount: 500,
+    vibration: false,
+    sound: false,
+    counterAnimation: false,
+    autoSave: false,
+    stopAtTarget: true,
+    theme: 'light',
+    history: [
+      {
+        id: 'history-matched',
+        dhikr: ' subhanallah ',
+        repetitions: 4,
+        time: '8:15 AM',
+        date: '2026-09-18',
+      },
+      {
+        id: 'history-unmatched',
+        dhikr: 'A Dhikr added elsewhere',
+        repetitions: 2,
+        time: '7:45 AM',
+      },
+    ],
+  };
+  const storage = new Map([[STORAGE_KEY, JSON.stringify(stored)]]);
+  const hydrated = await simulateAppRestart(storage);
+
+  assert.deepEqual(hydrated.dhikrs.map(({ id }) => id), LEGACY_DHIKRS.map(({ id }) => id));
+  assert.equal(hydrated.selectedId, 'astaghfirullah');
+  assert.deepEqual(hydrated.counters, stored.counters);
+  assert.deepEqual(hydrated.targets, stored.targets);
+  assert.equal(hydrated.vibration, false);
+  assert.equal(hydrated.sound, false);
+  assert.equal(hydrated.counterAnimation, false);
+  assert.equal(hydrated.autoSave, false);
+  assert.equal(hydrated.stopAtTarget, true);
+  assert.equal(hydrated.theme, 'light');
+  assert.equal(hydrated.lifetimeCount, 500);
+  assert.deepEqual(hydrated.history, [
+    { ...stored.history[0], dhikrId: 'subhanallah' },
+    stored.history[1],
+  ]);
+  assert.deepEqual(calculateStats(hydrated.dailyCounts, hydrated.lifetimeCount, new Date(2026, 8, 18, 12), hydrated.dailyCountsByDhikr), {
+    today: 7,
+    thisWeek: 12,
+    total: 500,
+  });
 });
 
 test('migration keeps a current empty library empty', () => {
