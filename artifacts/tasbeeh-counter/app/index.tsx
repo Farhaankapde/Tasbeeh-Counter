@@ -474,12 +474,13 @@ function HistorySection({ appState, palette }: { appState: AppState; palette: Pa
 
 function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCount, onChooseDhikr, onAddDhikr, onEditDhikr, onDeleteDhikr }: { tab: Tab; palette: Palette; appState: AppState; todayCount: number; weekCount: number; totalCount: number; onChooseDhikr: (id: string) => void; onAddDhikr: () => void; onEditDhikr: (item: DhikrRecord) => void; onDeleteDhikr: (id: string) => void }) {
   const insets = useSafeAreaInsets();
+  const secondarySafeTop = Platform.OS === 'ios' ? Math.max(insets.top, 52) : Platform.OS === 'android' ? Math.max(insets.top, 24) : Math.max(insets.top, 18);
   const isLibrary = tab === 'dhikrs';
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikrs';
   const subtitle = isLibrary ? 'Add, manage and remember.\nKeep your heart connected.' : tab === 'history' ? 'Your recent remembrance sessions' : 'A quiet view of your progress';
   return <View style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
     <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} />
-    <ScrollView style={{ zIndex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: insets.top + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
+    <ScrollView style={{ zIndex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: secondarySafeTop + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
       <View style={[styles.secondaryHeader, { borderBottomWidth: 1, borderBottomColor: palette.border, paddingBottom: 16, marginBottom: 20 }]}>
         <Text style={[styles.secondaryTitle, isLibrary && { fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 38, fontWeight: '400', letterSpacing: -0.8 }, { color: palette.foreground }]}>{title}</Text>
         <Text style={[styles.secondarySubtitle, isLibrary && { fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 15, lineHeight: 21 }, { color: palette.muted }]}>{subtitle}</Text>
