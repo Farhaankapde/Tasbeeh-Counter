@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState as NativeAppState, Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,8 +55,8 @@ export default function HomeScreen() {
   const appStateRef = useRef<AppState>(DEFAULT_STATE);
   const scale = useRef(new Animated.Value(1)).current;
   const progressAnimation = useRef(new Animated.Value(0)).current;
-  const tapSound = useRef<Audio.Sound | null>(null);
-  const completionSound = useRef<Audio.Sound | null>(null);
+  const tapSound = useAudioPlayer(require('../assets/sounds/tap.wav'));
+  const completionSound = useAudioPlayer(require('../assets/sounds/completion.wav'));
   const webAudio = useRef<AudioContext | null>(null);
   const storagePersister = useRef(createLatestStatePersister<AppState>((state) => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)))).current;
   const feedbackTriggered = useRef(new Set<string>());
@@ -118,31 +118,12 @@ export default function HomeScreen() {
   }, [hydrated]);
 
   useEffect(() => {
-    let active = true;
-    const prepareSound = async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-        const [tapResult, completionResult] = await Promise.all([
-          Audio.Sound.createAsync(require('../assets/sounds/tap.wav'), { shouldPlay: false, volume: 0.42 }),
-          Audio.Sound.createAsync(require('../assets/sounds/completion.wav'), { shouldPlay: false, volume: 0.55 }),
-        ]);
-        if (active) {
-          tapSound.current = tapResult.sound;
-          completionSound.current = completionResult.sound;
-        } else {
-          await Promise.all([tapResult.sound.unloadAsync(), completionResult.sound.unloadAsync()]);
-        }
-      } catch {
-        // The web oscillator below remains a graceful fallback.
-      }
-    };
-    void prepareSound();
-    return () => {
-      active = false;
-      if (tapSound.current) void tapSound.current.unloadAsync();
-      if (completionSound.current) void completionSound.current.unloadAsync();
-    };
-  }, []);
+    tapSound.volume = 0.42;
+    completionSound.volume = 0.55;
+    void setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false }).catch(() => {
+      // The web oscillator below remains a graceful fallback.
+    });
+  }, [completionSound, tapSound]);
 
   useEffect(() => {
     let active = true;
@@ -173,8 +154,8 @@ export default function HomeScreen() {
   }, [progressAnimation, targetProgress]);
 
   const playClick = async () => {
-    if (tapSound.current) {
-      try { await tapSound.current.replayAsync(); return; } catch { /* use web oscillator */ }
+    if (tapSound.isLoaded) {
+      try { await tapSound.seekTo(0); tapSound.play(); return; } catch { /* use web oscillator */ }
     }
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
@@ -193,8 +174,8 @@ export default function HomeScreen() {
   };
 
   const playCompletion = async () => {
-    if (completionSound.current) {
-      try { await completionSound.current.replayAsync(); return; } catch { /* use web oscillator */ }
+    if (completionSound.isLoaded) {
+      try { await completionSound.seekTo(0); completionSound.play(); return; } catch { /* use web oscillator */ }
     }
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {

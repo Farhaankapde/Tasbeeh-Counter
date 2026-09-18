@@ -89,12 +89,15 @@ mock.module('@react-native-async-storage/async-storage', {
     removeItem: async () => undefined,
   },
 });
-mock.module('expo-av', {
+mock.module('expo-audio', {
   namedExports: {
-    Audio: {
-      setAudioModeAsync: async () => undefined,
-      Sound: { createAsync: async () => ({ sound: { unloadAsync: async () => undefined, replayAsync: async () => undefined } }) },
-    },
+    setAudioModeAsync: async () => undefined,
+    useAudioPlayer: () => ({
+      isLoaded: true,
+      volume: 1,
+      seekTo: async () => undefined,
+      play: () => undefined,
+    }),
   },
 });
 mock.module('expo-haptics', {
