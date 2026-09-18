@@ -13,6 +13,11 @@ import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
 const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.png');
+const COUNTER_IMAGES: Record<AccentTheme, number> = {
+  red: COUNTER_IMAGE,
+  green: require('../assets/images/realistic-counter-green.png'),
+  blue: require('../assets/images/realistic-counter-blue.png'),
+};
 const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
 const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
@@ -146,7 +151,7 @@ export default function HomeScreen() {
   useEffect(() => {
     let active = true;
     const preloadCounterAssets = async () => {
-      const uris = [COUNTER_IMAGE, CINEMATIC_BACKGROUND]
+      const uris = [...Object.values(COUNTER_IMAGES), CINEMATIC_BACKGROUND]
         .map((source) => {
           try {
             return Image.resolveAssetSource(source)?.uri;
@@ -352,7 +357,7 @@ export default function HomeScreen() {
            </View> : null}
            {selectedTarget ? <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><Animated.View style={[styles.selectorProgress, { width: animatedProgressWidth, backgroundColor: completionFlash ? palette.primaryBright : palette.primary, shadowColor: palette.primaryBright }]} /></View> : null}
         </View>
-          <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
+          <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1, minHeight: 0 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} counterImage={COUNTER_IMAGES[appState.accentTheme]} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
          <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
           <View style={[styles.referenceActions, compactCounter && styles.referenceActionsCompact]}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} onPress={() => setResetting(true)} style={({ pressed: p }) => [styles.referenceAction, compactCounter && styles.referenceActionCompact, styles.resetAction, { minHeight: compactCounter ? 48 : 52, borderRadius: 28, borderColor: palette.border, backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(20, 20, 20, 0.82)' }, p && styles.pressed]}><Feather name="rotate-ccw" size={20} color={palette.foreground} /><Text style={[styles.referenceActionText, { color: palette.foreground }]}>Reset</Text></Pressable></View>
          </View>
@@ -394,11 +399,11 @@ export default function HomeScreen() {
   );
 }
 
-function HardwareCounter({ count, width, palette, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
+function HardwareCounter({ count, width, palette, counterImage, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; counterImage: number; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
-    <Image source={COUNTER_IMAGE} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
-    <Image source={COUNTER_IMAGE} resizeMode="contain" style={styles.hardwareImage} />
+    <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
+    <Image source={counterImage} resizeMode="contain" style={styles.hardwareImage} />
     <View pointerEvents="none" style={styles.lcdGlass} />
     <View style={styles.liveDisplay}>
       <Text style={styles.ghostDigits}>888</Text>
