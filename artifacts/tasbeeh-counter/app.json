@@ -8,7 +8,7 @@
     "scheme": "tasbeeh-counter",
     "userInterfaceStyle": "automatic",
     "ios": { "supportsTablet": true },
-    "android": { "package": "com.farhaankapde.tasbeehcounter", "adaptiveIcon": { "foregroundImage": "./assets/images/icon.png", "backgroundColor": "#0B0B0B" } },
+    "android": { "package": "com.farhaankapde.tasbeehcounter", "versionCode": 1, "adaptiveIcon": { "foregroundImage": "./assets/images/icon.png", "backgroundColor": "#0B0B0B" } },
     "web": { "favicon": "./assets/images/icon.png" },
     "plugins": ["expo-router", ["expo-audio", { "recordAudioAndroid": false }]],
     "experiments": { "typedRoutes": true, "reactCompiler": true }

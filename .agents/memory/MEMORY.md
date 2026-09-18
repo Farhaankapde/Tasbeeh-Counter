@@ -2,3 +2,4 @@
 - [Expo web state checks](expo-web-state-checks.md) — persisted browser storage can mask seeded UI states; isolate visual checks with a temporary storage key and restore it afterward.
 - [React Native UI tests](react-native-ui-tests.md) — Node-based Expo UI tests need the pure RNTL entry and mocked native modules.
 - [Large Expo stylesheets](large-expo-stylesheets.md) — make narrowly targeted edits to the app’s long single-line StyleSheet blocks to avoid dropping adjacent definitions.
+- [Android EAS builds](android-eas-builds.md) — Replit previews Expo apps but EAS native compilation must run through an external EAS workflow.
