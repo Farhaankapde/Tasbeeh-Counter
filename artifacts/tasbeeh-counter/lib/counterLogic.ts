@@ -5,6 +5,7 @@ export type HistoryEntry = { id: string; dhikr: string; dhikrId?: string; repeti
 export type AppState = {
   dhikrs: DhikrRecord[];
   selectedId: string;
+  anonymousCount: number;
   counters: Record<string, number>;
   targets: Record<string, number | null>;
   dailyCounts: Record<string, number>;
@@ -154,6 +155,9 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     : 0;
   const lifetimeCountsByDhikr = normalizeNumberRecord(parsed.lifetimeCountsByDhikr);
   const savedSelectedId = typeof parsed.selectedId === 'string' ? parsed.selectedId : '';
+  const savedAnonymousCount = typeof parsed.anonymousCount === 'number' && Number.isFinite(parsed.anonymousCount) && parsed.anonymousCount >= 0
+    ? Math.min(Math.floor(parsed.anonymousCount), 999999)
+    : defaults.anonymousCount;
   const history = Array.isArray(parsed.history)
     ? parsed.history.filter(isValidHistoryEntry).map((entry) => {
       if (entry.dhikrId || typeof entry.dhikr !== 'string') return entry;
@@ -187,6 +191,7 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     selectedId: dhikrs.some((item: DhikrRecord) => item.id === savedSelectedId)
       ? savedSelectedId
       : dhikrs[0]?.id ?? '',
+    anonymousCount: savedAnonymousCount,
     counters,
     targets,
     dailyCounts,

@@ -29,6 +29,7 @@ const LEGACY_DHIKRS: DhikrRecord[] = [
 const DEFAULT_STATE: AppState = {
   dhikrs: [],
   selectedId: '',
+  anonymousCount: 0,
   counters: {},
   targets: {},
   dailyCounts: {},

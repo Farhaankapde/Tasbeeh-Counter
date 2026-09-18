@@ -27,7 +27,9 @@ const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'astaghfirullah', name: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ ٱللَّٰهَ', icon: 'water-outline' },
   { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
 ];
-const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
+const ANONYMOUS_DHIKR_ID = '__tasbeeh__';
+const ANONYMOUS_DHIKR_NAME = 'Tasbeeh';
+const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', anonymousCount: 0, counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
 type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
@@ -63,9 +65,10 @@ export default function HomeScreen() {
   const activeHistorySessionId = useRef<string | null>(null);
   const basePalette = appState.theme === 'light' ? colors.light : colors.dark;
   const palette: Palette = { ...basePalette, ...colors.accents[appState.accentTheme] };
-  const selectedDhikr = useMemo(() => appState.dhikrs.find((item) => item.id === appState.selectedId) ?? appState.dhikrs[0] ?? ({ id: '', name: 'Dhikr', arabic: '', icon: 'circle-double' } as Dhikr), [appState.dhikrs, appState.selectedId]);
-  const currentCount = selectedDhikr ? appState.counters[selectedDhikr.id] ?? 0 : 0;
-  const selectedTarget = selectedDhikr ? appState.targets[selectedDhikr.id] ?? null : null;
+  const selectedDhikr = useMemo(() => appState.dhikrs.find((item) => item.id === appState.selectedId) ?? appState.dhikrs[0] ?? ({ id: ANONYMOUS_DHIKR_ID, name: ANONYMOUS_DHIKR_NAME, arabic: '', icon: 'circle-double' } as Dhikr), [appState.dhikrs, appState.selectedId]);
+  const anonymousCounter = selectedDhikr.id === ANONYMOUS_DHIKR_ID;
+  const currentCount = anonymousCounter ? appState.anonymousCount : appState.counters[selectedDhikr.id] ?? 0;
+  const selectedTarget = anonymousCounter ? null : appState.targets[selectedDhikr.id] ?? null;
   const stats = calculateStats(appState.dailyCounts, appState.lifetimeCount, new Date(), appState.dailyCountsByDhikr);
   const todayCount = stats.today;
   const weekCount = stats.thisWeek;
@@ -202,9 +205,10 @@ export default function HomeScreen() {
   const increment = () => {
     const previous = appStateRef.current;
     const dhikr = previous.dhikrs.find((item) => item.id === previous.selectedId) ?? previous.dhikrs[0];
-    if (!dhikr) return;
-    const count = previous.counters[dhikr.id] ?? 0;
-    const target = previous.targets[dhikr.id] ?? null;
+    const dhikrId = dhikr?.id ?? ANONYMOUS_DHIKR_ID;
+    const dhikrName = dhikr?.name ?? ANONYMOUS_DHIKR_NAME;
+    const count = dhikr ? previous.counters[dhikr.id] ?? 0 : previous.anonymousCount;
+    const target = dhikr ? previous.targets[dhikr.id] ?? null : null;
     if (!canAcceptCount(count, target, previous.stopAtTarget, hydrated)) {
       if (previous.vibration) void Haptics.selectionAsync();
       return;
@@ -212,31 +216,34 @@ export default function HomeScreen() {
     const nextCount = Math.min(999999, count + 1);
     const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const date = getLocalDateKey();
-    const targetFeedbackKey = `target:${dhikr.id}:${target}`;
+    const targetFeedbackKey = `target:${dhikrId}:${target}`;
     const feedback = getCountFeedback(nextCount, target);
     const reachedTarget = feedback === 'target' && !feedbackTriggered.current.has(targetFeedbackKey);
     const milestone = feedback === 'milestone';
-    const milestoneFeedbackKey = `milestone:${dhikr.id}:${nextCount}`;
+    const milestoneFeedbackKey = `milestone:${dhikrId}:${nextCount}`;
     const last = previous.history[0];
-    const canContinueSession = canContinueHistorySession(activeHistorySessionId.current, last, dhikr.id, date);
+    const canContinueSession = dhikr
+      ? canContinueHistorySession(activeHistorySessionId.current, last, dhikr.id, date)
+      : Boolean(activeHistorySessionId.current && last?.id === activeHistorySessionId.current && last.dhikrId === ANONYMOUS_DHIKR_ID && last.date === date);
     const sessionId = canContinueSession ? last!.id : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const nextHistory = canContinueSession
       ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
-      : [{ id: sessionId, dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history];
+      : [{ id: sessionId, dhikr: dhikrName, dhikrId, repetitions: 1, time, date }, ...previous.history];
     activeHistorySessionId.current = sessionId;
     updateAppState(() => ({
       ...previous,
-      counters: { ...previous.counters, [dhikr.id]: nextCount },
+      anonymousCount: dhikr ? previous.anonymousCount : nextCount,
+      counters: dhikr ? { ...previous.counters, [dhikr.id]: nextCount } : previous.counters,
       dailyCounts: { ...previous.dailyCounts, [date]: (previous.dailyCounts[date] ?? 0) + 1 },
-      dailyCountsByDhikr: {
+      dailyCountsByDhikr: dhikr ? {
         ...previous.dailyCountsByDhikr,
         [dhikr.id]: { ...(previous.dailyCountsByDhikr[dhikr.id] ?? {}), [date]: (previous.dailyCountsByDhikr[dhikr.id]?.[date] ?? 0) + 1 },
-      },
+      } : previous.dailyCountsByDhikr,
       lifetimeCount: previous.lifetimeCount + 1,
-      lifetimeCountsByDhikr: {
+      lifetimeCountsByDhikr: dhikr ? {
         ...previous.lifetimeCountsByDhikr,
         [dhikr.id]: (previous.lifetimeCountsByDhikr[dhikr.id] ?? 0) + 1,
-      },
+      } : previous.lifetimeCountsByDhikr,
       history: nextHistory,
     }));
     if (reachedTarget) {
@@ -264,7 +271,13 @@ export default function HomeScreen() {
 
   const changeSetting = <K extends keyof AppState>(key: K, value: AppState[K]) => updateAppState((previous) => ({ ...previous, [key]: value }));
   const resetCurrent = () => {
-    if (!selectedDhikr) return;
+    if (anonymousCounter) {
+      setResetting(false);
+      activeHistorySessionId.current = null;
+      setCompletionFlash(false);
+      updateAppState((previous) => ({ ...previous, anonymousCount: 0 }));
+      return;
+    }
     const id = appStateRef.current.selectedId;
     setResetting(false);
     activeHistorySessionId.current = null;
@@ -323,15 +336,15 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle={appState.theme === 'light' ? 'dark-content' : 'light-content'} />
-      {activeTab === 'counter' ? appState.dhikrs.length > 0 ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
+      {activeTab === 'counter' ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
         <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} />
          <View style={[styles.counterLayer, { flex: 1, minHeight: 0 }]}>
           <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, { color: palette.foreground }]}>Tasbeeh Counter</Text></View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} /></View>
          <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: appState.theme === 'light' ? palette.card : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
-          <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
+           <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} disabled={anonymousCounter} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
               <DhikrMark palette={palette} size={compactCounter ? 48 : 54} />
              <View style={styles.selectorCopy}><Text style={[styles.selectorName, compactCounter && { fontSize: 14, lineHeight: 18 }, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, compactCounter && { fontSize: 10 }, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View>
-            <Feather name="chevron-down" size={20} color={palette.foreground} />
+             {anonymousCounter ? null : <Feather name="chevron-down" size={20} color={palette.foreground} />}
           </Pressable>
            {selectedTarget ? <View accessibilityLabel={`Target ${selectedTarget}`} style={[styles.targetPill, { backgroundColor: palette.primary }]}>
             <MaterialCommunityIcons name={completionFlash ? 'check-circle' : 'target'} size={14} color={selectedTarget ? palette.primaryForeground : palette.primaryBright} />
@@ -343,7 +356,7 @@ export default function HomeScreen() {
           <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact, { marginBottom: 50 }]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
            <View pointerEvents="box-none" style={{ alignItems: 'flex-end', marginTop: compactCounter ? 0 : 3, paddingRight: 3, position: 'absolute', right: 0, bottom: 4, zIndex: 10, elevation: 10 }}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} hitSlop={10} onPressIn={() => { if (appStateRef.current.vibration) Haptics.selectionAsync().catch(() => undefined); }} onPress={() => setResetting(true)} style={({ pressed: p }) => [{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: palette.border, backgroundColor: 'rgba(18, 18, 18, 0.68)', alignItems: 'center', justifyContent: 'center', shadowColor: palette.primary, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ scale: p ? 0.9 : 1 }], opacity: p ? 0.78 : 1 }]}><Feather name="rotate-ccw" size={18} color={palette.primaryBright} /></Pressable></View>
          </View>
-           </View> : <EmptyHome palette={palette} onAdd={() => { setActiveTab('dhikrs'); openDhikrEditor(); }} onSettings={() => setSettingsOpen(true)} /> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} onChooseDhikr={chooseDhikr} onAddDhikr={() => openDhikrEditor()} onEditDhikr={openDhikrEditor} onDeleteDhikr={setDeleteDhikrId} />}
+            </View> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} onChooseDhikr={chooseDhikr} onAddDhikr={() => openDhikrEditor()} onEditDhikr={openDhikrEditor} onDeleteDhikr={setDeleteDhikrId} />}
        <TabBar activeTab={activeTab} palette={palette} onChange={setActiveTab} bottomInset={insets.bottom} />
 
         <Modal visible={selectorOpen} transparent animationType="slide" onRequestClose={() => setSelectorOpen(false)}><View style={styles.modalRoot}><Pressable style={styles.modalBackdrop} onPress={() => setSelectorOpen(false)} /><View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}><SheetHandle palette={palette} /><View style={styles.sheetHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Choose Dhikr</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Each remembrance keeps its own count</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close Dhikr selector" onPress={() => setSelectorOpen(false)} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View>{appState.dhikrs.map((item, index) => { const active = item.id === selectedDhikr?.id; return <Pressable key={item.id} testID={'dhikr-option-' + item.id} accessibilityRole="button" accessibilityLabel={'Select ' + item.name} onPress={() => chooseDhikr(item.id)} style={({ pressed: p }) => [styles.option, { backgroundColor: active ? palette.primary : palette.surface, borderColor: active ? palette.primaryBright : palette.border, opacity: p ? 0.78 : 1 }]}><DhikrMark palette={palette} size={39} /><View style={styles.optionCopy}><Text style={[styles.optionName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.optionArabic, { color: palette.muted }]}>{item.arabic ?? ''}</Text></View><View style={styles.optionMeta}><Text style={[styles.optionCount, { color: active ? palette.primaryForeground : palette.muted }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text>{active ? <Feather name="check" size={18} color={palette.primaryForeground} /> : <Text style={[styles.optionNumber, { color: palette.muted }]}>{String(index + 1).padStart(2, '0')}</Text>}</View></Pressable>; })}</View></View></Modal>
@@ -490,9 +503,8 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
   </View>;
 }
 
-function EmptyHome({ palette, onAdd, onSettings }: { palette: Palette; onAdd: () => void; onSettings: () => void }) { const insets = useSafeAreaInsets(); return <View style={{ flex: 1, paddingTop: insets.top + 24, paddingHorizontal: 21, paddingBottom: 100 + Math.max(insets.bottom, 14) }}><View style={styles.topBar}><View style={styles.iconButton} /><Text style={[styles.greetingName, { color: palette.foreground }]}>Tasbeeh Counter</Text><IconButton icon="settings" label="Open settings" onPress={onSettings} palette={palette} /></View><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 }}><MaterialCommunityIcons name="counter" size={48} color={palette.primaryBright} /><Text style={[styles.emptyTitle, { color: palette.foreground }]}>Start your library</Text><Text style={[styles.emptyBody, { color: palette.muted }]}>Add a Dhikr to begin your local practice.</Text><Pressable testID="empty-add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAdd} style={[styles.plusButton, styles.premiumPrimaryButton, { backgroundColor: palette.primary, borderColor: palette.primaryBright, width: 160, height: 48, marginTop: 18 }]}><Feather name="plus" size={18} color={palette.primaryForeground} /><Text style={[styles.plusText, { color: palette.primaryForeground, fontSize: 15 }]}>Add Dhikr</Text></Pressable></View></View>; }
 function EmptyPanel({ icon, title, body, palette }: { icon: keyof typeof Feather.glyphMap; title: string; body: string; palette: Palette }) { return <View style={[styles.emptyPanel, styles.premiumEmptyPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Feather name={icon} size={25} color={palette.primaryBright} /><Text style={[styles.emptyTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.emptyBody, { color: palette.muted }]}>{body}</Text></View>; }
-function TabBar({ activeTab, palette, onChange, bottomInset }: { activeTab: Tab; palette: Palette; onChange: (tab: Tab) => void; bottomInset: number }) { const items: Array<{ id: Tab; label: string; icon: keyof typeof Feather.glyphMap }> = [{ id: 'counter', label: 'Counter', icon: 'smartphone' }, { id: 'history', label: 'History', icon: 'list' }, { id: 'stats', label: 'Stats', icon: 'bar-chart-2' }, { id: 'dhikrs', label: 'Dhikrs', icon: 'bookmark' }]; return <View style={[styles.tabBar, styles.premiumTabBar, { backgroundColor: palette.background, borderTopColor: palette.border, paddingBottom: Math.max(bottomInset, 9) }]}>{items.map((item) => { const active = activeTab === item.id; return <Pressable key={item.id} testID={`open-${item.id}`} accessibilityRole="button" accessibilityLabel={'Open ' + item.label} onPress={() => onChange(item.id)} style={({ pressed: p }) => [styles.tabItem, p && styles.pressed]}><View style={styles.tabIconWrap}><Feather name={item.icon} size={21} color={active ? palette.primaryBright : palette.muted} /></View><Text style={[styles.tabLabel, { color: active ? palette.primaryBright : palette.muted }]}>{item.label}</Text></Pressable>; })}</View>; }
+function TabBar({ activeTab, palette, onChange, bottomInset }: { activeTab: Tab; palette: Palette; onChange: (tab: Tab) => void; bottomInset: number }) { const items: Array<{ id: Tab; label: string; icon: keyof typeof Feather.glyphMap }> = [{ id: 'counter', label: 'Tasbeeh', icon: 'smartphone' }, { id: 'history', label: 'History', icon: 'list' }, { id: 'stats', label: 'Stats', icon: 'bar-chart-2' }, { id: 'dhikrs', label: 'Dhikrs', icon: 'bookmark' }]; return <View style={[styles.tabBar, styles.premiumTabBar, { backgroundColor: palette.background, borderTopColor: palette.border, paddingBottom: Math.max(bottomInset, 9) }]}>{items.map((item) => { const active = activeTab === item.id; return <Pressable key={item.id} testID={`open-${item.id}`} accessibilityRole="button" accessibilityLabel={'Open ' + item.label} onPress={() => onChange(item.id)} style={({ pressed: p }) => [styles.tabItem, p && styles.pressed]}><View style={styles.tabIconWrap}><Feather name={item.icon} size={21} color={active ? palette.primaryBright : palette.muted} /></View><Text style={[styles.tabLabel, { color: active ? palette.primaryBright : palette.muted }]}>{item.label}</Text></Pressable>; })}</View>; }
 function IconButton({ icon, label, onPress, palette }: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void; palette: Palette }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed: p }) => [styles.iconButton, { opacity: p ? 0.66 : 1 }]}><Feather name={icon} size={25} color={palette.foreground} /></Pressable>; }
 function SettingsModal({ visible, appState, palette, topInset, bottomInset, onClose, onChange }: { visible: boolean; appState: AppState; palette: Palette; topInset: number; bottomInset: number; onClose: () => void; onChange: <Key extends keyof AppState>(key: Key, value: AppState[Key]) => void }) {
   return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

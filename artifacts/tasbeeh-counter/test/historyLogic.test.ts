@@ -13,6 +13,7 @@ const DHIKRS: DhikrRecord[] = [
 const DEFAULT_STATE: AppState = {
   dhikrs: [],
   selectedId: '',
+  anonymousCount: 0,
   counters: {},
   targets: {},
   dailyCounts: {},
@@ -39,6 +40,8 @@ const HISTORY_FIXTURE: AppState = {
     session('other-session', 'Alhamdulillah', 3, '2026-09-18', 'alhamdulillah'),
   ],
 };
+
+let storedAppState = JSON.stringify(HISTORY_FIXTURE);
 
 const require = createRequire(import.meta.url);
 require.extensions['.wav'] = () => {};
@@ -84,8 +87,8 @@ const mockIcon = ({ name }: { name: string }) => React.createElement('Text', nul
 const iconWithGlyphMap = Object.assign(mockIcon, { glyphMap: {} });
 mock.module('@react-native-async-storage/async-storage', {
   defaultExport: {
-    getItem: async () => JSON.stringify(HISTORY_FIXTURE),
-    setItem: async () => undefined,
+    getItem: async () => storedAppState,
+    setItem: async (_key: string, value: string) => { storedAppState = value; },
     removeItem: async () => undefined,
   },
 });
@@ -129,6 +132,45 @@ function session(id: string, dhikr: string, repetitions: number, date?: string, 
     ...(date ? { date } : {}),
   };
 }
+
+test('empty install counts immediately, persists anonymously, and still allows adding a Dhikr', async () => {
+  storedAppState = JSON.stringify({ ...DEFAULT_STATE, dhikrs: [], selectedId: '', anonymousCount: 0 });
+  try {
+    const { fireEvent, render, waitFor } = await import('@testing-library/react-native/pure');
+    const { default: HomeScreen } = await import('../app/index.tsx');
+    const screen = await render(React.createElement(HomeScreen));
+
+    await waitFor(() => assert.ok(screen.getByTestId('tasbeeh-button')));
+    assert.ok(screen.getAllByText('Tasbeeh').length > 0);
+    assert.equal(screen.queryByText('Start your library'), null);
+    assert.equal(screen.queryByTestId('empty-add-dhikr'), null);
+
+    await fireEvent.press(screen.getByTestId('tasbeeh-button'));
+    await waitFor(() => assert.ok(screen.getByText('001')));
+    const savedAfterCount = JSON.parse(storedAppState) as AppState;
+    assert.deepEqual(savedAfterCount.dhikrs, []);
+    assert.equal(savedAfterCount.anonymousCount, 1);
+    assert.equal(savedAfterCount.lifetimeCount, 1);
+
+    await screen.unmount();
+    const restarted = await render(React.createElement(HomeScreen));
+    await waitFor(() => assert.ok(restarted.getByText('001')));
+    await fireEvent.press(restarted.getByTestId('open-dhikrs'));
+    await waitFor(() => assert.ok(restarted.getByText('Your Dhikr Library is Empty')));
+
+    await fireEvent.press(restarted.getByTestId('add-dhikr'));
+    await fireEvent.changeText(restarted.getByTestId('dhikr-name-input'), 'SubhanAllah');
+    await fireEvent.press(restarted.getByTestId('save-dhikr'));
+    await waitFor(() => assert.ok(restarted.getByText('SubhanAllah')));
+
+    const savedAfterDhikr = JSON.parse(storedAppState) as AppState;
+    assert.equal(savedAfterDhikr.dhikrs.length, 1);
+    assert.equal(savedAfterDhikr.dhikrs[0]?.name, 'SubhanAllah');
+    await restarted.unmount();
+  } finally {
+    storedAppState = JSON.stringify(HISTORY_FIXTURE);
+  }
+});
 
 test('History tab drills into every grouped session and returns to the overview', async () => {
   const { fireEvent, render, waitFor } = await import('@testing-library/react-native/pure');
