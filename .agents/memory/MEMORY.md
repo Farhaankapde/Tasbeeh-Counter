@@ -1,1 +1,2 @@
 - [Expo preview environment](expo-preview.md) — optional React Native DevTools may warn about missing libglib while the Expo preview remains healthy.
+- [Expo web state checks](expo-web-state-checks.md) — persisted browser storage can mask seeded UI states; isolate visual checks with a temporary storage key and restore it afterward.
