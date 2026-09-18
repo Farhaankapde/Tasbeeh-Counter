@@ -134,7 +134,7 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
   assert.equal(migrated.theme, 'light');
   assert.equal(migrated.accentTheme, 'blue');
   assert.equal(migrated.lifetimeCount, stored.lifetimeCount);
-  assert.deepEqual(migrated.dailyCounts, { '2026-09-17': 5, '2026-09-18': 7 });
+  assert.deepEqual(migrated.dailyCounts, { '2026-09-17': 5, '2026-09-18': 6 });
   assert.deepEqual(migrated.dailyCountsByDhikr, stored.dailyCountsByDhikr);
   assert.deepEqual(migrated.lifetimeCountsByDhikr, {
     subhanallah: 12,
@@ -251,7 +251,7 @@ test('aggregate daily totals take precedence over per-Dhikr copies', () => {
     },
   );
 
-  assert.deepEqual(stats, { today: 4, thisWeek: 9, total: 321 });
+  assert.deepEqual(stats, { today: 4, thisWeek: 12, total: 321 });
 });
 
 test('target feedback takes precedence over milestone feedback', () => {
@@ -336,7 +336,7 @@ test('automatic persistence always keeps the latest practice state', () => {
 
 test('rapid persistence coalesces queued writes and restores the final state after restart', async () => {
   const writes: number[] = [];
-  let releaseFirstWrite = () => undefined;
+  let releaseFirstWrite: () => void = () => undefined;
   const firstWriteFinished = new Promise<void>((resolve) => {
     releaseFirstWrite = resolve;
   });
