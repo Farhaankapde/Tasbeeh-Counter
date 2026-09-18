@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import {
   calculateStats,
   canAcceptCount,
+  canContinueHistorySession,
+  createLatestStatePersister,
   getCountFeedback,
+  getLcdFontSize,
   getPracticeSnapshot,
   getStateForPersistence,
   migrateStoredState,
@@ -31,6 +34,7 @@ const DEFAULT_STATE: AppState = {
   dailyCounts: {},
   dailyCountsByDhikr: {},
   lifetimeCount: 0,
+  lifetimeCountsByDhikr: {},
   vibration: true,
   sound: true,
   counterAnimation: true,
@@ -130,8 +134,16 @@ test('legacy six-Dhikr state preserves records, practice, selection, settings, h
   assert.equal(migrated.theme, 'light');
   assert.equal(migrated.accentTheme, 'blue');
   assert.equal(migrated.lifetimeCount, stored.lifetimeCount);
-  assert.deepEqual(migrated.dailyCounts, stored.dailyCounts);
+  assert.deepEqual(migrated.dailyCounts, { '2026-09-17': 5, '2026-09-18': 7 });
   assert.deepEqual(migrated.dailyCountsByDhikr, stored.dailyCountsByDhikr);
+  assert.deepEqual(migrated.lifetimeCountsByDhikr, {
+    subhanallah: 12,
+    alhamdulillah: 7,
+    'allahu-akbar': 3,
+    'la-ilaha': 1,
+    astaghfirullah: 9,
+    subhanallahi: 5,
+  });
   assert.deepEqual(migrated.history, [
     { ...matchedHistory, dhikrId: 'subhanallah' },
     unmatchedHistory,
@@ -198,6 +210,14 @@ test('a legacy six-Dhikr record survives an AsyncStorage-shaped app restart', as
   assert.equal(hydrated.theme, 'light');
   assert.equal(hydrated.accentTheme, 'green');
   assert.equal(hydrated.lifetimeCount, 500);
+  assert.deepEqual(hydrated.lifetimeCountsByDhikr, {
+    subhanallah: 12,
+    alhamdulillah: 7,
+    'allahu-akbar': 3,
+    'la-ilaha': 1,
+    astaghfirullah: 9,
+    subhanallahi: 5,
+  });
   assert.deepEqual(hydrated.history, [
     { ...stored.history[0], dhikrId: 'subhanallah' },
     stored.history[1],
@@ -215,7 +235,7 @@ test('migration keeps a current empty library empty', () => {
   assert.equal(migrated.selectedId, '');
 });
 
-test('legacy aggregate and new per-Dhikr daily totals combine exactly once', () => {
+test('aggregate daily totals take precedence over per-Dhikr copies', () => {
   const date = new Date(2026, 8, 18, 12, 0, 0);
   const stats = calculateStats(
     {
@@ -231,7 +251,7 @@ test('legacy aggregate and new per-Dhikr daily totals combine exactly once', () 
     },
   );
 
-  assert.deepEqual(stats, { today: 6, thisWeek: 14, total: 321 });
+  assert.deepEqual(stats, { today: 4, thisWeek: 9, total: 321 });
 });
 
 test('target feedback takes precedence over milestone feedback', () => {
@@ -249,6 +269,24 @@ test('counting waits for hydration, stops at a target, and honors maximum count'
   assert.equal(canAcceptCount(10, 10, false, true), true);
   assert.equal(canAcceptCount(999998, null, false, true), true);
   assert.equal(canAcceptCount(999999, null, false, true), false);
+});
+
+test('LCD font size keeps three through six digit counts visible', () => {
+  assert.equal(getLcdFontSize(93), 55);
+  assert.equal(getLcdFontSize(999), 55);
+  assert.equal(getLcdFontSize(1000), 46);
+  assert.equal(getLcdFontSize(9999), 46);
+  assert.equal(getLcdFontSize(10000), 38);
+  assert.equal(getLcdFontSize(99999), 38);
+  assert.equal(getLcdFontSize(100000), 32);
+  assert.equal(getLcdFontSize(999999), 32);
+});
+
+test('Dhikr switching forces a new history session boundary', () => {
+  const last = { id: 'session-1', dhikr: 'SubhanAllah', dhikrId: 'subhanallah', repetitions: 4, time: '8:15 AM', date: '2026-09-18' };
+  assert.equal(canContinueHistorySession('session-1', last, 'subhanallah', '2026-09-18'), true);
+  assert.equal(canContinueHistorySession(null, last, 'subhanallah', '2026-09-18'), false);
+  assert.equal(canContinueHistorySession('session-1', last, 'alhamdulillah', '2026-09-18'), false);
 });
 
 test('automatic persistence always keeps the latest practice state', () => {
@@ -294,4 +332,52 @@ test('automatic persistence always keeps the latest practice state', () => {
   assert.deepEqual(hydratedAfterRestart.history, unsavedState.history);
   assert.deepEqual(hydratedAfterRestart.dhikrs, unsavedState.dhikrs);
   assert.equal(hydratedAfterRestart.vibration, false);
+});
+
+test('rapid persistence coalesces queued writes and restores the final state after restart', async () => {
+  const writes: number[] = [];
+  let releaseFirstWrite = () => undefined;
+  const firstWriteFinished = new Promise<void>((resolve) => {
+    releaseFirstWrite = resolve;
+  });
+  const persister = createLatestStatePersister<number>(async (state) => {
+    writes.push(state);
+    if (state === 1) await firstWriteFinished;
+  });
+
+  const first = persister.enqueue(1);
+  await Promise.resolve();
+  const second = persister.enqueue(2);
+  const third = persister.enqueue(3);
+  releaseFirstWrite();
+  await Promise.all([first, second, third]);
+
+  assert.deepEqual(writes, [1, 3]);
+  const storage = new Map([[STORAGE_KEY, JSON.stringify({
+    ...DEFAULT_STATE,
+    dhikrs: LEGACY_DHIKRS.slice(0, 1),
+    selectedId: 'subhanallah',
+    counters: { subhanallah: 999999 },
+    dailyCounts: { '2026-09-18': 999999 },
+    dailyCountsByDhikr: { subhanallah: { '2026-09-18': 999999 } },
+    lifetimeCount: 999999,
+    lifetimeCountsByDhikr: { subhanallah: 999999 },
+  })]]);
+  const restored = await simulateAppRestart(storage);
+  assert.equal(restored.counters.subhanallah, 999999);
+  assert.equal(restored.lifetimeCountsByDhikr.subhanallah, 999999);
+});
+
+test('migration filters malformed history without discarding valid sessions', () => {
+  const migrated = migrateStoredState({
+    ...DEFAULT_STATE,
+    dhikrs: LEGACY_DHIKRS.slice(0, 1),
+    history: [
+      { id: 'valid', dhikr: 'SubhanAllah', repetitions: 3, time: '8:15 AM', date: '2026-09-18' },
+      null,
+      { id: 'missing-count', dhikr: 'SubhanAllah', time: '8:16 AM' },
+      { id: 'bad-date', dhikr: 'SubhanAllah', repetitions: 2, time: '8:17 AM', date: 'not-a-date' },
+    ],
+  }, DEFAULT_STATE, LEGACY_DHIKRS);
+  assert.deepEqual(migrated.history, [{ id: 'valid', dhikr: 'SubhanAllah', dhikrId: 'subhanallah', repetitions: 3, time: '8:15 AM', date: '2026-09-18' }]);
 });

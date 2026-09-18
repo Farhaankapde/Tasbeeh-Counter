@@ -16,6 +16,7 @@ const DEFAULT_STATE: AppState = {
   dailyCounts: {},
   dailyCountsByDhikr: {},
   lifetimeCount: 0,
+  lifetimeCountsByDhikr: {},
   vibration: true,
   sound: true,
   counterAnimation: true,
@@ -106,4 +107,13 @@ test('persistence keeps every original session separate for later grouping', () 
 
   assert.deepEqual(restored.history, history);
   assert.deepEqual(groupHistoryEntries(restored.history, restored.dhikrs).flatMap((group) => group.entries), history);
+});
+
+test('persistence retains more than 30 individual history sessions', () => {
+  const history = Array.from({ length: 35 }, (_, index) => session(`session-${index}`, 'SubhanAllah', index + 1, '2026-09-18', 'subhanallah'));
+  const state: AppState = { ...DEFAULT_STATE, dhikrs: DHIKRS, selectedId: 'subhanallah', history };
+  const persisted = getStateForPersistence(state, { ...DEFAULT_STATE, history });
+  const restored = restoreStoredState(JSON.parse(JSON.stringify(persisted)), DEFAULT_STATE);
+  assert.equal(restored.history.length, 35);
+  assert.deepEqual(restored.history.map((entry) => entry.id), history.map((entry) => entry.id));
 });

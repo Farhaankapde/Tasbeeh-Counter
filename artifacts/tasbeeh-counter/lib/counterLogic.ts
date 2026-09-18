@@ -69,6 +69,10 @@ export function getLcdFontSize(count: number) {
   return 55;
 }
 
+export function canContinueHistorySession(activeSessionId: string | null, lastEntry: HistoryEntry | undefined, dhikrId: string, date: string) {
+  return Boolean(activeSessionId && lastEntry && activeSessionId === lastEntry.id && lastEntry.dhikrId === dhikrId && lastEntry.date === date);
+}
+
 export function calculateStats(dailyCounts: Record<string, number>, lifetimeCount: number, date = new Date(), dailyCountsByDhikr: Record<string, Record<string, number>> = {}) {
   const today = getLocalDateKey(date);
   const start = new Date(date);

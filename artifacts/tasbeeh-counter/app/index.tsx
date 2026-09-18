@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, createLatestStatePersister, getCountFeedback, getLcdFontSize, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, canContinueHistorySession, createLatestStatePersister, getCountFeedback, getLcdFontSize, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
@@ -237,7 +237,7 @@ export default function HomeScreen() {
     const milestone = feedback === 'milestone';
     const milestoneFeedbackKey = `milestone:${dhikr.id}:${nextCount}`;
     const last = previous.history[0];
-    const canContinueSession = Boolean(last && activeHistorySessionId.current === last.id && last.dhikrId === dhikr.id && last.date === date);
+    const canContinueSession = canContinueHistorySession(activeHistorySessionId.current, last, dhikr.id, date);
     const sessionId = canContinueSession ? last!.id : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const nextHistory = canContinueSession
       ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
