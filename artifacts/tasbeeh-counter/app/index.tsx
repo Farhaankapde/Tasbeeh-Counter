@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -9,8 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
 
 type Dhikr = { id: string; name: string; arabic: string; icon: keyof typeof MaterialCommunityIcons.glyphMap };
-type HistoryEntry = { id: string; dhikr: string; repetitions: number; time: string };
-type AppState = { selectedId: string; counters: Record<string, number>; vibration: boolean; sound: boolean; counterAnimation: boolean; autoSave: boolean; theme: 'dark' | 'light'; history: HistoryEntry[] };
+type HistoryEntry = { id: string; dhikr: string; repetitions: number; time: string; date?: string };
+type AppState = { selectedId: string; counters: Record<string, number>; targets: Record<string, number | null>; dailyCounts: Record<string, number>; lifetimeCount: number; vibration: boolean; sound: boolean; counterAnimation: boolean; autoSave: boolean; stopAtTarget: boolean; theme: 'dark' | 'light'; history: HistoryEntry[] };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
 const DEFAULT_DHIKR: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
@@ -21,7 +21,22 @@ const DEFAULT_DHIKR: Dhikr[] = [
   { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
 ];
 const DEFAULT_COUNTERS: Record<string, number> = { subhanallah: 289, alhamdulillah: 120, 'allahu-akbar': 67, 'la-ilaha': 43, astaghfirullah: 56, subhanallahi: 31 };
-const DEFAULT_STATE: AppState = { selectedId: 'subhanallah', counters: DEFAULT_COUNTERS, vibration: true, sound: true, counterAnimation: true, autoSave: true, theme: 'dark', history: [] };
+const DEFAULT_TARGETS: Record<string, number | null> = Object.fromEntries(DEFAULT_DHIKR.map((item) => [item.id, null]));
+const DEFAULT_STATE: AppState = { selectedId: 'subhanallah', counters: DEFAULT_COUNTERS, targets: DEFAULT_TARGETS, dailyCounts: {}, lifetimeCount: Object.values(DEFAULT_COUNTERS).reduce((sum, value) => sum + value, 0), vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', history: [] };
+
+const getDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getWeekStartKey = (date = new Date()) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return getDateKey(start);
+};
 
 type Palette = typeof colors.dark | typeof colors.light;
 
