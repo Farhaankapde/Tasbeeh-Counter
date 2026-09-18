@@ -39,8 +39,6 @@ export default function HomeScreen() {
   const [dhikrEditorOpen, setDhikrEditorOpen] = useState(false);
   const [editingDhikrId, setEditingDhikrId] = useState<string | null>(null);
   const [dhikrNameDraft, setDhikrNameDraft] = useState('');
-  const [dhikrArabicDraft, setDhikrArabicDraft] = useState('');
-  const [dhikrTranslationDraft, setDhikrTranslationDraft] = useState('');
   const [dhikrTargetDraft, setDhikrTargetDraft] = useState('');
   const [dhikrCustomTargetOpen, setDhikrCustomTargetOpen] = useState(false);
   const [deleteDhikrId, setDeleteDhikrId] = useState<string | null>(null);
@@ -53,6 +51,7 @@ export default function HomeScreen() {
   const savedPractice = useRef<PracticeSnapshot>(getPracticeSnapshot(DEFAULT_STATE));
   const storageWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const feedbackTriggered = useRef(new Set<string>());
+  const activeHistorySessionId = useRef<string | null>(null);
   const palette = appState.theme === 'light' ? colors.light : colors.dark;
   const selectedDhikr = useMemo(() => appState.dhikrs.find((item) => item.id === appState.selectedId) ?? appState.dhikrs[0] ?? ({ id: '', name: 'Dhikr', arabic: '', icon: 'circle-double' } as Dhikr), [appState.dhikrs, appState.selectedId]);
   const currentCount = selectedDhikr ? appState.counters[selectedDhikr.id] ?? 0 : 0;
@@ -197,9 +196,12 @@ export default function HomeScreen() {
     const milestone = feedback === 'milestone';
     const milestoneFeedbackKey = `milestone:${dhikr.id}:${nextCount}`;
     const last = previous.history[0];
-    const nextHistory = last && last.dhikrId === dhikr.id && last.date === date
+    const canContinueSession = Boolean(last && activeHistorySessionId.current === last.id && last.dhikrId === dhikr.id && last.date === date);
+    const sessionId = canContinueSession ? last!.id : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const nextHistory = canContinueSession
       ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
-      : [{ id: String(Date.now()), dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history].slice(0, 30);
+      : [{ id: sessionId, dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history].slice(0, 30);
+    activeHistorySessionId.current = sessionId;
     updateAppState(() => ({
       ...previous,
       counters: { ...previous.counters, [dhikr.id]: nextCount },
@@ -239,6 +241,7 @@ export default function HomeScreen() {
     if (!selectedDhikr) return;
     const id = appStateRef.current.selectedId;
     setResetting(false);
+    activeHistorySessionId.current = null;
     [...feedbackTriggered.current].filter((key) => key.includes(`:${id}:`)).forEach((key) => feedbackTriggered.current.delete(key));
     setCompletionFlash(false);
     updateAppState((previous) => ({ ...previous, counters: { ...previous.counters, [id]: 0 } }));
@@ -248,19 +251,15 @@ export default function HomeScreen() {
   const openDhikrEditor = (item?: DhikrRecord) => {
     setEditingDhikrId(item?.id ?? null);
     setDhikrNameDraft(item?.name ?? '');
-    setDhikrArabicDraft(item?.arabic ?? '');
-    setDhikrTranslationDraft(item?.translation ?? '');
     const target = item ? appStateRef.current.targets[item.id] ?? null : null;
     setDhikrTargetDraft(target ? String(target) : '');
-    setDhikrCustomTargetOpen(Boolean(target && ![33, 99, 100].includes(target)));
+    setDhikrCustomTargetOpen(Boolean(target));
     setDhikrEditorOpen(true);
   };
   const closeDhikrEditor = () => {
     setDhikrEditorOpen(false);
     setEditingDhikrId(null);
     setDhikrNameDraft('');
-    setDhikrArabicDraft('');
-    setDhikrTranslationDraft('');
     setDhikrTargetDraft('');
     setDhikrCustomTargetOpen(false);
   };
@@ -271,7 +270,7 @@ export default function HomeScreen() {
     if (target !== null && (!Number.isInteger(target) || target < 1 || target > 999999)) return;
     const existing = editingDhikrId ? appStateRef.current.dhikrs.find((item) => item.id === editingDhikrId) : undefined;
     const id = editingDhikrId ?? makeDhikrId();
-    const item: DhikrRecord = { id, name, arabic: dhikrArabicDraft.trim() || undefined, translation: dhikrTranslationDraft.trim() || undefined, icon: existing?.icon ?? 'circle-double' };
+    const item: DhikrRecord = { ...(existing ?? {}), id, name, icon: existing?.icon ?? 'circle-double' };
     updateAppState((previous) => ({
       ...previous,
       dhikrs: editingDhikrId ? previous.dhikrs.map((entry) => entry.id === id ? item : entry) : [...previous.dhikrs, item],
@@ -297,6 +296,7 @@ export default function HomeScreen() {
     const state = appStateRef.current;
     savedPractice.current = getPracticeSnapshot(state);
     await queuePersist(state);
+    activeHistorySessionId.current = null;
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1500);
   };
@@ -351,28 +351,34 @@ function HardwareCounter({ count, width, palette, scale, pressed, disabled, onPr
 
 function MetricCard({ icon, label, value, palette }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: number; palette: Palette }) { return <View style={[styles.metricCard, { backgroundColor: palette.card, borderColor: palette.border }]}><MaterialCommunityIcons name={icon} size={19} color={palette.primaryBright} /><Text style={[styles.metricLabel, { color: palette.muted }]}>{label}</Text><Text style={[styles.metricValue, { color: palette.foreground }]}>{value.toLocaleString()}</Text><View style={[styles.metricUnderline, { backgroundColor: palette.primary }]} /></View>; }
 
+function formatHistoryDate(date?: string) {
+  if (!date) return '';
+  const [year, month, day] = date.split('-').map(Number);
+  if (![year, month, day].every(Number.isFinite)) return date;
+  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(year, month - 1, day));
+}
+
+function lifetimeTotalForDhikr(appState: AppState, id: string) {
+  const dailyEntries = appState.dailyCountsByDhikr[id];
+  if (dailyEntries && Object.keys(dailyEntries).length > 0) {
+    return Object.values(dailyEntries).reduce((sum, value) => sum + value, 0);
+  }
+  return appState.history.reduce((sum, entry) => entry.dhikrId === id ? sum + entry.repetitions : sum, 0);
+}
+
 function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCount, onChooseDhikr, onAddDhikr, onEditDhikr, onDeleteDhikr }: { tab: Tab; palette: Palette; appState: AppState; todayCount: number; weekCount: number; totalCount: number; onChooseDhikr: (id: string) => void; onAddDhikr: () => void; onEditDhikr: (item: DhikrRecord) => void; onDeleteDhikr: (id: string) => void }) {
   const insets = useSafeAreaInsets();
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikr Library';
-  const selectedCount = appState.counters[appState.selectedId] ?? 0;
-  const selectedTarget = appState.targets[appState.selectedId] ?? null;
-  const progress = selectedTarget ? Math.min(selectedCount / selectedTarget, 1) : 0;
   return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: insets.top + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
     <View style={styles.secondaryHeader}><Text style={[styles.secondaryTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.secondarySubtitle, { color: palette.muted }]}>{tab === 'history' ? 'Your recent remembrance sessions' : tab === 'stats' ? 'A quiet view of your progress' : 'Choose a remembrance to continue'}</Text></View>
-    {tab === 'history' ? <View>{appState.history.length === 0 ? <EmptyPanel icon="clock" title="No sessions yet" body="Your completed counting sessions will appear here." palette={palette} /> : appState.history.map((entry) => <View key={entry.id} style={[styles.historyRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{appState.dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${entry.date} · ${entry.time}` : entry.time}</Text></View><Text style={[styles.historyCount, { color: palette.primaryBright }]}>+{entry.repetitions}</Text></View>)}</View>
+    {tab === 'history' ? <View>{appState.history.length === 0 ? <EmptyPanel icon="clock" title="No practice history yet" body="Your counting sessions will appear here." palette={palette} /> : appState.history.map((entry) => <View key={entry.id} style={[styles.historyRow, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{appState.dhikrs.find((item) => item.id === entry.dhikrId)?.name ?? entry.dhikr}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{entry.date ? `${formatHistoryDate(entry.date)} • ${entry.time}` : entry.time}</Text></View><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{entry.repetitions.toLocaleString()} repetitions</Text></View>)}</View>
       : tab === 'stats' ? <View>
-        <View style={styles.statsGrid}><MetricCard icon="calendar-today" label="Today" value={todayCount} palette={palette} /><MetricCard icon="calendar-week" label="This Week" value={weekCount} palette={palette} /><MetricCard icon="chart-bar" label="Total" value={totalCount} palette={palette} /></View>
-        <View style={[styles.goalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={[styles.goalIcon, { borderColor: palette.primary }]}><MaterialCommunityIcons name="target" size={19} color={palette.primaryBright} /></View>
-          <View style={styles.goalCopy}><Text style={[styles.goalLabel, { color: palette.foreground }]}>Dhikr Target</Text><Text style={[styles.goalValue, { color: palette.muted }]}>{selectedTarget ? `${selectedCount.toLocaleString()} / ${selectedTarget.toLocaleString()}` : 'No target'}</Text></View>
-          <View style={styles.goalProgressWrap}><View style={[styles.goalTrack, { backgroundColor: palette.surfaceStrong }]}><View style={[styles.goalProgress, { width: `${Math.round(progress * 100)}%`, backgroundColor: palette.primary }]} /></View></View>
-          <Text style={[styles.goalPercent, { color: palette.primaryBright }]}>{selectedTarget ? `${Math.round(progress * 100)}%` : '—'}</Text>
-        </View>
-        <View style={[styles.longPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Text style={[styles.panelEyebrow, { color: palette.primaryBright }]}>ALL-TIME PRACTICE</Text><Text style={[styles.panelTitle, { color: palette.foreground }]}>{totalCount.toLocaleString()} repetitions</Text><Text style={[styles.panelBody, { color: palette.muted }]}>Today and This Week are calculated from locally stored daily totals.</Text></View>
+        <View style={styles.statsGrid}><MetricCard icon="calendar-today" label="Today" value={todayCount} palette={palette} /><MetricCard icon="calendar-week" label="This Week" value={weekCount} palette={palette} /><MetricCard icon="chart-bar" label="All Time" value={totalCount} palette={palette} /></View>
+        <View style={[styles.byDhikrPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Text style={[styles.byDhikrTitle, { color: palette.foreground }]}>By Dhikr</Text>{appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="No Dhikrs yet" body="Add a Dhikr to see lifetime totals by remembrance." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} style={[styles.byDhikrRow, { borderBottomColor: palette.border }]}><Text style={[styles.byDhikrName, { color: palette.foreground }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.byDhikrValue, { color: palette.primaryBright }]}>{lifetimeTotalForDhikr(appState, item.id).toLocaleString()}</Text></View>)}</View>
       </View>
       : <View>
-        <Pressable testID="add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAddDhikr} style={[styles.plusButton, { backgroundColor: palette.primary, marginBottom: 14 }]}><Feather name="plus" size={18} color={palette.primaryForeground} /><Text style={[styles.plusText, { fontSize: 16 }]}>Add Dhikr</Text></Pressable>
-        {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your library is empty" body="Add a Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, { backgroundColor: palette.card, borderColor: palette.border }]}><Pressable accessibilityRole="button" accessibilityLabel={`Select ${item.name}`} onPress={() => onChooseDhikr(item.id)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{item.name}</Text><Text style={[styles.historyTime, { color: palette.muted }]}>{item.arabic || item.translation || 'No description'}</Text></View></Pressable><View style={styles.libraryMeta}><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text><Text style={[styles.libraryTarget, { color: palette.muted }]}>{appState.targets[item.id] ? `Target ${appState.targets[item.id]}` : 'No target'}</Text><View style={{ flexDirection: 'row', gap: 10 }}><Pressable testID={`edit-dhikr-${item.id}`} accessibilityLabel={`Edit ${item.name}`} onPress={() => onEditDhikr(item)}><Feather name="edit-2" size={16} color={palette.primaryBright} /></Pressable><Pressable testID={`delete-dhikr-${item.id}`} accessibilityLabel={`Delete ${item.name}`} onPress={() => onDeleteDhikr(item.id)}><Feather name="trash-2" size={16} color={palette.destructive} /></Pressable></View></View></View>)}
+        <Pressable testID="add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAddDhikr} style={[styles.plusButton, { backgroundColor: palette.primary, marginBottom: 14 }]}><Feather name="plus" size={18} color={palette.primaryForeground} /><Text style={styles.plusText}>Add Dhikr</Text></Pressable>
+        {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your library is empty" body="Add a Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, { backgroundColor: palette.card, borderColor: palette.border }]}><Pressable accessibilityRole="button" accessibilityLabel={`Select ${item.name}`} onPress={() => onChooseDhikr(item.id)} style={styles.librarySelect}><View style={[styles.historyIcon, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color={palette.primaryForeground} /></View><View style={styles.historyCopy}><Text style={[styles.historyName, { color: palette.foreground }]}>{item.name}</Text>{appState.targets[item.id] ? <Text style={[styles.libraryTarget, { color: palette.muted }]}>Target {appState.targets[item.id]}</Text> : null}</View></Pressable><View style={styles.libraryMeta}><Text style={[styles.historyCount, { color: palette.primaryBright }]}>{String(appState.counters[item.id] ?? 0).padStart(3, '0')}</Text><View style={styles.libraryActions}><Pressable testID={`edit-dhikr-${item.id}`} accessibilityRole="button" accessibilityLabel={`Edit ${item.name}`} onPress={() => onEditDhikr(item)} style={[styles.libraryAction, { backgroundColor: palette.surface }]}><Feather name="edit-3" size={17} color={palette.primaryBright} /></Pressable><Pressable testID={`delete-dhikr-${item.id}`} accessibilityRole="button" accessibilityLabel={`Delete ${item.name}`} onPress={() => onDeleteDhikr(item.id)} style={[styles.libraryAction, { backgroundColor: palette.surface }]}><Feather name="trash-2" size={17} color={palette.destructive} /></Pressable></View></View></View>)}
       </View>}
   </ScrollView>;
 }
