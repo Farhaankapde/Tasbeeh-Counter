@@ -1,0 +1,182 @@
+IMPORTANT UI CHANGE — SIMPLIFY THE COUNTER SCREEN
+
+I have decided that the Counter screen should focus primarily on the physical Tasbeeh counter.
+
+REMOVE these elements from the Counter screen:
+
+- Today card
+- This Week card
+- Total card
+- Daily Goal card
+
+Do NOT delete their underlying functionality or data.
+
+Move/preserve this information in the appropriate existing sections:
+
+History:
+- daily sessions
+- previous counts
+- saved sessions
+
+Stats:
+- Today
+- This Week
+- Total
+- Daily Goal
+- progress/statistics
+
+The Counter screen should NOT display these cards.
+
+================================================
+
+NEW COUNTER SCREEN LAYOUT
+
+Use this exact order:
+
+1. Header
+2. Dhikr selector
+3. Large physical Tasbeeh counter
+4. RESET / +1 / SAVE action bar
+5. Bottom navigation
+
+================================================
+
+PHYSICAL COUNTER
+
+Now that we have removed the statistics and Daily Goal, give the physical Tasbeeh counter more vertical space.
+
+The ENTIRE physical counter must be completely visible.
+
+Nothing should be cut off at the bottom.
+
+Do NOT crop the physical counter.
+
+Do NOT hide any part of it.
+
+It must show:
+
+- complete red outer casing
+- KMA Digital
+- complete LCD
+- COUNT
+- RESET
+- small physical reset button
+- complete large metallic counting button
+- complete bottom portion of red casing
+
+The counter should be centered.
+
+================================================
+
+COUNTER SIZE
+
+The physical counter can now be slightly larger vertically because we have removed the statistics and Daily Goal.
+
+However, keep the metallic counting button at its CURRENT reduced size.
+
+Do NOT enlarge the metallic button again.
+
+The button should remain approximately 18% smaller than the original oversized version.
+
+There should be plenty of visible red casing around it.
+
+================================================
+
+KMA DIGITAL
+
+Restore:
+
+KMA Digital
+
+above the LCD.
+
+Use the serif/metallic appearance from the original reference.
+
+================================================
+
+LCD
+
+Keep the realistic LCD:
+
+- pale gray/green background
+- rounded corners
+- 3-digit 7-segment display
+- faint inactive segments
+- current count dynamically displayed
+
+================================================
+
+COUNT / RESET
+
+Keep these labels below the LCD:
+
+COUNT                         RESET
+
+================================================
+
+BOTTOM ACTION BAR
+
+Below the physical Tasbeeh, add:
+
+RESET          [       +1       ]          SAVE
+
+The +1 button should be a prominent red pill.
+
+RESET and SAVE should be smaller.
+
+All three must remain functional.
+
+================================================
+
+BOTTOM NAVIGATION
+
+At the bottom:
+
+Counter | History | Stats | Dhikrs
+
+Counter selected in red.
+
+================================================
+
+HEADER
+
+Fix the header safe area.
+
+The phone notch must NOT cover:
+
+Assalamu Alaikum,
+
+The header should clearly display:
+
+Assalamu Alaikum,
+Farhaan
+
+with hamburger on the left and settings on the right.
+
+================================================
+
+IMPORTANT
+
+The Counter screen should now be a CLEAN, FOCUSED counting screen.
+
+Do NOT bring Today / This Week / Total back onto this screen.
+
+Do NOT bring Daily Goal back onto this screen.
+
+Those features still need to exist in History/Stats where appropriate.
+
+The main visual focus should be the physical Tasbeeh counter.
+
+FINAL SCREEN:
+
+Header
+↓
+Dhikr selector
+↓
+COMPLETE LARGE PHYSICAL TASBEEH
+↓
+RESET / +1 / SAVE
+↓
+Bottom navigation
+
+Make sure the COMPLETE physical counter is visible before considering the task finished.
