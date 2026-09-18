@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { createRequire } from 'node:module';
+import { mock, test } from 'node:test';
+import React from 'react';
 import { groupHistoryEntries, getHistoryDateSection } from '../lib/historyLogic.ts';
 import { getStateForPersistence, restoreStoredState, type AppState, type DhikrRecord, type HistoryEntry } from '../lib/counterLogic.ts';
 
@@ -27,6 +29,93 @@ const DEFAULT_STATE: AppState = {
   history: [],
 };
 
+const HISTORY_FIXTURE: AppState = {
+  ...DEFAULT_STATE,
+  dhikrs: DHIKRS,
+  selectedId: 'subhanallah',
+  history: [
+    session('session-2', 'SubhanAllah', 9, '2026-09-18', 'subhanallah'),
+    session('session-1', 'SubhanAllah', 4, '2026-09-18', 'subhanallah'),
+    session('other-session', 'Alhamdulillah', 3, '2026-09-18', 'alhamdulillah'),
+  ],
+};
+
+const require = createRequire(import.meta.url);
+require.extensions['.wav'] = () => {};
+require.extensions['.png'] = () => {};
+
+const hostComponent = (name: string) => (props: Record<string, unknown>) => React.createElement(name, props, props.children as React.ReactNode);
+const HostView = hostComponent('View');
+const HostText = hostComponent('Text');
+const HostPressable = hostComponent('Pressable');
+const HostScrollView = hostComponent('ScrollView');
+const HostImage = hostComponent('Image');
+const HostTextInput = hostComponent('TextInput');
+const HostSwitch = hostComponent('Switch');
+const MockAnimatedValue = class {
+  constructor(public value: number) {}
+  setValue(value: number) { this.value = value; }
+  interpolate(config: { inputRange: number[]; outputRange: string[] }) { return config.outputRange[0]; }
+};
+mock.module('react-native', {
+  namedExports: {
+    Animated: {
+      Value: MockAnimatedValue,
+      Text: HostText,
+      timing: () => ({ start: () => undefined }),
+    },
+    AppState: { addEventListener: () => ({ remove: () => undefined }) },
+    Easing: { out: (value: unknown) => value, quad: () => undefined },
+    Image: HostImage,
+    Modal: ({ visible, children, ...props }: { visible: boolean; children?: React.ReactNode }) => visible ? React.createElement('Modal', props, children) : null,
+    Platform: { OS: 'ios' },
+    Pressable: HostPressable,
+    ScrollView: HostScrollView,
+    StatusBar: () => null,
+    StyleSheet: { create: <T,>(styles: T) => styles, flatten: (style: unknown) => style },
+    Switch: HostSwitch,
+    Text: HostText,
+    TextInput: HostTextInput,
+    View: HostView,
+    useWindowDimensions: () => ({ width: 400, height: 800, scale: 1, fontScale: 1 }),
+  },
+});
+const mockIcon = ({ name }: { name: string }) => React.createElement('Text', null, name);
+const iconWithGlyphMap = Object.assign(mockIcon, { glyphMap: {} });
+mock.module('@react-native-async-storage/async-storage', {
+  defaultExport: {
+    getItem: async () => JSON.stringify(HISTORY_FIXTURE),
+    setItem: async () => undefined,
+    removeItem: async () => undefined,
+  },
+});
+mock.module('expo-av', {
+  namedExports: {
+    Audio: {
+      setAudioModeAsync: async () => undefined,
+      Sound: { createAsync: async () => ({ sound: { unloadAsync: async () => undefined, replayAsync: async () => undefined } }) },
+    },
+  },
+});
+mock.module('expo-haptics', {
+  namedExports: {
+    selectionAsync: async () => undefined,
+    notificationAsync: async () => undefined,
+    impactAsync: async () => undefined,
+    NotificationFeedbackType: { Success: 'success' },
+    ImpactFeedbackStyle: { Medium: 'medium', Light: 'light' },
+  },
+});
+mock.module('@expo/vector-icons', { namedExports: { Feather: iconWithGlyphMap, MaterialCommunityIcons: iconWithGlyphMap } });
+mock.module('expo-linear-gradient', {
+  namedExports: {
+    LinearGradient: ({ children, style }: { children: React.ReactNode; style?: unknown }) => React.createElement('View', { style }, children),
+  },
+});
+mock.module('react-native-safe-area-context', {
+  namedExports: { useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) },
+});
+
 function session(id: string, dhikr: string, repetitions: number, date?: string, dhikrId?: string): HistoryEntry {
   return {
     id,
@@ -37,6 +126,29 @@ function session(id: string, dhikr: string, repetitions: number, date?: string, 
     ...(date ? { date } : {}),
   };
 }
+
+test('History tab drills into every grouped session and returns to the overview', async () => {
+  const { fireEvent, render, waitFor } = await import('@testing-library/react-native/pure');
+  const { default: HomeScreen } = await import('../app/index.tsx');
+  const screen = await render(React.createElement(HomeScreen));
+
+  await fireEvent.press(screen.getByTestId('open-history'));
+  await waitFor(() => assert.ok(screen.getByTestId('history-group-2026-09-18:subhanallah')));
+  assert.ok(screen.getByLabelText('View SubhanAllah sessions'));
+  assert.ok(screen.getByLabelText('View Alhamdulillah sessions'));
+
+  await fireEvent.press(screen.getByTestId('history-group-2026-09-18:subhanallah'));
+  assert.ok(screen.getByText('SubhanAllah'));
+  assert.ok(screen.getByText('9 repetitions'));
+  assert.ok(screen.getByText('4 repetitions'));
+  assert.equal(screen.queryByTestId('history-group-2026-09-18:subhanallah'), null);
+
+  await fireEvent.press(screen.getByTestId('history-overview'));
+  assert.ok(screen.getByTestId('history-group-2026-09-18:subhanallah'));
+  assert.ok(screen.getByLabelText('View Alhamdulillah sessions'));
+
+  await screen.unmount();
+});
 
 test('one session stays one group and keeps its original record', () => {
   const history = [session('session-1', 'SubhanAllah', 7, '2026-09-18', 'subhanallah')];
