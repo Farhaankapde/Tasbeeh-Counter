@@ -10,6 +10,7 @@ export type AppState = {
   dailyCounts: Record<string, number>;
   dailyCountsByDhikr: Record<string, Record<string, number>>;
   lifetimeCount: number;
+  lifetimeCountsByDhikr: Record<string, number>;
   vibration: boolean;
   sound: boolean;
   counterAnimation: boolean;
@@ -20,7 +21,7 @@ export type AppState = {
   history: HistoryEntry[];
 };
 
-export type PracticeSnapshot = Pick<AppState, 'counters' | 'dailyCounts' | 'dailyCountsByDhikr' | 'lifetimeCount' | 'history'>;
+export type PracticeSnapshot = Pick<AppState, 'counters' | 'dailyCounts' | 'dailyCountsByDhikr' | 'lifetimeCount' | 'lifetimeCountsByDhikr' | 'history'>;
 
 export const MILESTONES = [33, 99, 100] as const;
 
@@ -30,6 +31,7 @@ export function getPracticeSnapshot(state: AppState): PracticeSnapshot {
     dailyCounts: state.dailyCounts,
     dailyCountsByDhikr: state.dailyCountsByDhikr,
     lifetimeCount: state.lifetimeCount,
+    lifetimeCountsByDhikr: state.lifetimeCountsByDhikr,
     history: state.history,
   };
 }
@@ -59,23 +61,29 @@ export function getLocalDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function getLcdFontSize(count: number) {
+  const digitCount = Math.max(3, String(Math.max(0, Math.floor(count))).length);
+  if (digitCount >= 6) return 32;
+  if (digitCount === 5) return 38;
+  if (digitCount === 4) return 46;
+  return 55;
+}
+
 export function calculateStats(dailyCounts: Record<string, number>, lifetimeCount: number, date = new Date(), dailyCountsByDhikr: Record<string, Record<string, number>> = {}) {
   const today = getLocalDateKey(date);
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay());
   const weekStart = getLocalDateKey(start);
-  const legacyToday = dailyCounts[today] ?? 0;
-  const legacyWeek = Object.entries(dailyCounts).reduce((sum, [key, value]) => key >= weekStart && key <= today ? sum + value : sum, 0);
-  const currentTotals = Object.values(dailyCountsByDhikr).reduce(
-    (totals, entries) => {
-      totals.today += entries[today] ?? 0;
-      totals.week += Object.entries(entries).reduce((sum, [key, value]) => key >= weekStart && key <= today ? sum + value : sum, 0);
-      return totals;
-    },
-    { today: 0, week: 0 },
-  );
-  return { today: legacyToday + currentTotals.today, thisWeek: legacyWeek + currentTotals.week, total: lifetimeCount };
+  const perDhikrByDate = Object.values(dailyCountsByDhikr).reduce<Record<string, number>>((totals, entries) => {
+    Object.entries(entries).forEach(([key, value]) => { totals[key] = (totals[key] ?? 0) + value; });
+    return totals;
+  }, {});
+  const dates = new Set([...Object.keys(dailyCounts), ...Object.keys(perDhikrByDate)]);
+  const totalForDate = (key: string) => dailyCounts[key] ?? perDhikrByDate[key] ?? 0;
+  const todayTotal = dates.has(today) ? totalForDate(today) : 0;
+  const weekTotal = Array.from(dates).reduce((sum, key) => key >= weekStart && key <= today ? sum + totalForDate(key) : sum, 0);
+  return { today: todayTotal, thisWeek: weekTotal, total: lifetimeCount };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,6 +95,24 @@ function normalizeNumberRecord(value: unknown) {
   return Object.fromEntries(
     Object.entries(value).filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count >= 0),
   ) as Record<string, number>;
+}
+
+function isValidDateKey(value: unknown) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day;
+}
+
+function isValidHistoryEntry(value: unknown): value is HistoryEntry {
+  if (!isRecord(value)) return false;
+  if (typeof value.id !== 'string' || value.id.trim() === '') return false;
+  if (typeof value.dhikr !== 'string' || value.dhikr.trim() === '') return false;
+  if (typeof value.repetitions !== 'number' || !Number.isInteger(value.repetitions) || value.repetitions < 1) return false;
+  if (typeof value.time !== 'string' || value.time.trim() === '') return false;
+  if (value.dhikrId !== undefined && (typeof value.dhikrId !== 'string' || value.dhikrId.trim() === '')) return false;
+  if (value.date !== undefined && !isValidDateKey(value.date)) return false;
+  return true;
 }
 
 export function migrateStoredState(value: unknown, defaults: AppState, legacyDhikrs: DhikrRecord[] = []): AppState {
@@ -108,18 +134,44 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
   const dailyCountsByDhikr = Object.fromEntries(
     Object.entries(rawDailyByDhikr).map(([id, entries]) => [id, normalizeNumberRecord(entries)]),
   ) as Record<string, Record<string, number>>;
+  const hasDurableDhikrTotals = isRecord(parsed.lifetimeCountsByDhikr);
+  if (!hasDurableDhikrTotals) {
+    Object.values(dailyCountsByDhikr).forEach((entries) => {
+      Object.entries(entries).forEach(([date, count]) => { dailyCounts[date] = (dailyCounts[date] ?? 0) + count; });
+    });
+  }
   const counterSum = Object.values(counters).reduce((sum, count) => sum + count, 0);
   const savedLifetime = typeof parsed.lifetimeCount === 'number' && Number.isFinite(parsed.lifetimeCount) && parsed.lifetimeCount >= 0
     ? parsed.lifetimeCount
     : 0;
+  const lifetimeCountsByDhikr = normalizeNumberRecord(parsed.lifetimeCountsByDhikr);
   const savedSelectedId = typeof parsed.selectedId === 'string' ? parsed.selectedId : '';
   const history = Array.isArray(parsed.history)
-    ? (parsed.history as HistoryEntry[]).map((entry) => {
+    ? parsed.history.filter(isValidHistoryEntry).map((entry) => {
       if (entry.dhikrId || typeof entry.dhikr !== 'string') return entry;
       const matchingDhikr = dhikrs.find((item) => item.name.trim().toLocaleLowerCase() === entry.dhikr.trim().toLocaleLowerCase());
       return matchingDhikr ? { ...entry, dhikrId: matchingDhikr.id } : entry;
     })
     : defaults.history;
+  const historyTotalsByDhikr = history.reduce<Record<string, number>>((totals, entry) => {
+    if (entry.dhikrId) totals[entry.dhikrId] = (totals[entry.dhikrId] ?? 0) + entry.repetitions;
+    return totals;
+  }, {});
+  const allDhikrIds = new Set([
+    ...Object.keys(counters),
+    ...Object.keys(dailyCountsByDhikr),
+    ...Object.keys(lifetimeCountsByDhikr),
+    ...Object.keys(historyTotalsByDhikr),
+  ]);
+  allDhikrIds.forEach((id) => {
+    const dailyTotal = Object.values(dailyCountsByDhikr[id] ?? {}).reduce((sum, count) => sum + count, 0);
+    lifetimeCountsByDhikr[id] = Math.max(
+      lifetimeCountsByDhikr[id] ?? 0,
+      counters[id] ?? 0,
+      dailyTotal,
+      historyTotalsByDhikr[id] ?? 0,
+    );
+  });
   return {
     ...defaults,
     ...parsed,
@@ -132,6 +184,7 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     dailyCounts,
     dailyCountsByDhikr,
     lifetimeCount: Math.max(savedLifetime, counterSum),
+    lifetimeCountsByDhikr,
     vibration: typeof parsed.vibration === 'boolean' ? parsed.vibration : defaults.vibration,
     sound: typeof parsed.sound === 'boolean' ? parsed.sound : defaults.sound,
     counterAnimation: typeof parsed.counterAnimation === 'boolean' ? parsed.counterAnimation : defaults.counterAnimation,
@@ -140,6 +193,35 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     theme: parsed.theme === 'light' ? 'light' : 'dark',
     accentTheme: parsed.accentTheme === 'green' || parsed.accentTheme === 'blue' ? parsed.accentTheme : 'red',
     history,
+  };
+}
+
+export function createLatestStatePersister<T>(write: (state: T) => Promise<void>) {
+  let pending: T | null = null;
+  let running = false;
+  let currentRun: Promise<void> = Promise.resolve();
+
+  const pump = async () => {
+    while (pending !== null) {
+      const next = pending;
+      pending = null;
+      await write(next);
+    }
+    running = false;
+  };
+
+  return {
+    enqueue(state: T) {
+      pending = state;
+      if (!running) {
+        running = true;
+        currentRun = pump().catch((error) => {
+          running = false;
+          throw error;
+        });
+      }
+      return currentRun;
+    },
   };
 }
 

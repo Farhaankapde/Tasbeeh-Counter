@@ -7,7 +7,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { calculateStats, canAcceptCount, getCountFeedback, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
+import { calculateStats, canAcceptCount, createLatestStatePersister, getCountFeedback, getLcdFontSize, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
@@ -27,7 +27,7 @@ const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'astaghfirullah', name: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ ٱللَّٰهَ', icon: 'water-outline' },
   { id: 'subhanallahi', name: 'SubhanAllahi wa bihamdihi', arabic: 'سُبْحَانَ ٱللَّٰهِ وَبِحَمْدِهِ', icon: 'weather-sunny' },
 ];
-const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
+const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
 type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const tapSound = useRef<Audio.Sound | null>(null);
   const completionSound = useRef<Audio.Sound | null>(null);
   const webAudio = useRef<AudioContext | null>(null);
-  const storageWriteQueue = useRef<Promise<void>>(Promise.resolve());
+  const storagePersister = useRef(createLatestStatePersister<AppState>((state) => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)))).current;
   const feedbackTriggered = useRef(new Set<string>());
   const activeHistorySessionId = useRef<string | null>(null);
   const basePalette = appState.theme === 'light' ? colors.light : colors.dark;
@@ -83,10 +83,7 @@ export default function HomeScreen() {
   };
 
   const queuePersist = (state: AppState) => {
-    storageWriteQueue.current = storageWriteQueue.current
-      .catch(() => undefined)
-      .then(() => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)));
-    return storageWriteQueue.current;
+    return storagePersister.enqueue(state);
   };
 
   useEffect(() => {
@@ -244,17 +241,21 @@ export default function HomeScreen() {
     const sessionId = canContinueSession ? last!.id : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const nextHistory = canContinueSession
       ? [{ ...last, repetitions: last.repetitions + 1, time, date }, ...previous.history.slice(1)]
-      : [{ id: sessionId, dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history].slice(0, 30);
+      : [{ id: sessionId, dhikr: dhikr.name, dhikrId: dhikr.id, repetitions: 1, time, date }, ...previous.history];
     activeHistorySessionId.current = sessionId;
     updateAppState(() => ({
       ...previous,
       counters: { ...previous.counters, [dhikr.id]: nextCount },
-      dailyCounts: previous.dailyCounts,
+      dailyCounts: { ...previous.dailyCounts, [date]: (previous.dailyCounts[date] ?? 0) + 1 },
       dailyCountsByDhikr: {
         ...previous.dailyCountsByDhikr,
         [dhikr.id]: { ...(previous.dailyCountsByDhikr[dhikr.id] ?? {}), [date]: (previous.dailyCountsByDhikr[dhikr.id]?.[date] ?? 0) + 1 },
       },
       lifetimeCount: previous.lifetimeCount + 1,
+      lifetimeCountsByDhikr: {
+        ...previous.lifetimeCountsByDhikr,
+        [dhikr.id]: (previous.lifetimeCountsByDhikr[dhikr.id] ?? 0) + 1,
+      },
       history: nextHistory,
     }));
     if (reachedTarget) {
@@ -290,7 +291,7 @@ export default function HomeScreen() {
     setCompletionFlash(false);
     updateAppState((previous) => ({ ...previous, counters: { ...previous.counters, [id]: 0 } }));
   };
-  const chooseDhikr = (id: string) => { updateAppState((previous) => ({ ...previous, selectedId: id })); setSelectorOpen(false); setActiveTab('counter'); };
+  const chooseDhikr = (id: string) => { activeHistorySessionId.current = null; updateAppState((previous) => ({ ...previous, selectedId: id })); setSelectorOpen(false); setActiveTab('counter'); };
   const makeDhikrId = () => `dhikr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const openDhikrEditor = (item?: DhikrRecord) => {
     setEditingDhikrId(item?.id ?? null);
@@ -327,6 +328,7 @@ export default function HomeScreen() {
   const confirmDeleteDhikr = () => {
     if (!deleteDhikrId) return;
     const id = deleteDhikrId;
+    activeHistorySessionId.current = null;
     updateAppState((previous) => {
       const dhikrs = previous.dhikrs.filter((item) => item.id !== id);
       const nextSelected = previous.selectedId === id ? dhikrs[0]?.id ?? '' : previous.selectedId;
@@ -399,13 +401,14 @@ export default function HomeScreen() {
 
 function HardwareCounter({ count, width, palette, counterImage, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; counterImage: number; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
+  const lcdFontSize = getLcdFontSize(count);
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
     <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : 0.4 }]} />
     <Image source={counterImage} resizeMode="contain" style={styles.hardwareImage} />
     <View pointerEvents="none" style={styles.lcdGlass} />
     <View style={styles.liveDisplay}>
-      <Text style={styles.ghostDigits}>888</Text>
-      <Animated.Text style={[styles.hardwareDigits, { transform: [{ scale }] }]}>{display}</Animated.Text>
+      <Text style={[styles.ghostDigits, { fontSize: lcdFontSize }]}>888</Text>
+      <Animated.Text style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
     <View pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed, pressed && { transform: [{ scale: 0.96 }] }]} />
     <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed, pressed && { transform: [{ scale: 0.95 }] }]} />
@@ -437,6 +440,8 @@ function formatHistoryDate(date?: string) {
 }
 
 function lifetimeTotalForDhikr(appState: AppState, id: string) {
+  const durableTotal = appState.lifetimeCountsByDhikr[id];
+  if (typeof durableTotal === 'number') return durableTotal;
   const dailyEntries = appState.dailyCountsByDhikr[id];
   if (dailyEntries && Object.keys(dailyEntries).length > 0) {
     return Object.values(dailyEntries).reduce((sum, value) => sum + value, 0);
@@ -526,8 +531,6 @@ function SettingsModal({ visible, appState, palette, topInset, bottomInset, onCl
           <AccentThemePicker value={appState.accentTheme} onChange={(theme) => onChange('accentTheme', theme)} palette={palette} />
           <SettingDivider palette={palette} />
           <View style={styles.themeRow}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}><Feather name="sun" size={17} color={palette.primaryForeground} /></View><Text style={[styles.settingLabel, { color: palette.foreground }]}>Mode</Text><View style={[styles.segmented, { backgroundColor: palette.surface }]}>{(['dark', 'light'] as const).map((theme) => <Pressable key={theme} testID={`display-mode-${theme}`} onPress={() => onChange('theme', theme)} style={[styles.segment, appState.theme === theme && { backgroundColor: palette.primary }]}><Feather name={theme === 'dark' ? 'moon' : 'sun'} size={14} color={appState.theme === theme ? palette.primaryForeground : palette.muted} /><Text style={[styles.segmentText, { color: appState.theme === theme ? palette.primaryForeground : palette.muted }]}>{theme === 'dark' ? 'Dark' : 'Light'}</Text></Pressable>)}</View></View>
-          <SettingDivider palette={palette} />
-          <View style={styles.settingInfoRow}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}><Feather name="type" size={17} color={palette.primaryForeground} /></View><View><Text style={[styles.settingLabel, { color: palette.foreground }]}>Counter size</Text><Text style={[styles.settingHint, { color: palette.muted }]}>Large and easy to read</Text></View></View>
         </SettingsSection>
         <SettingsSection title="ABOUT" palette={palette}><View style={styles.aboutRow}><View style={[styles.aboutMark, { backgroundColor: palette.primary }]}><MaterialCommunityIcons name="counter" size={21} color={palette.primaryForeground} /></View><View style={styles.aboutCopy}><Text style={[styles.aboutTitle, { color: palette.foreground }]}>Tasbeeh Counter</Text><Text style={[styles.aboutBody, { color: palette.muted }]}>A quiet place to remember.</Text></View><Text style={[styles.version, { color: palette.muted }]}>v1.0</Text></View></SettingsSection>
       </ScrollView>
