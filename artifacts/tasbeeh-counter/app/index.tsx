@@ -37,6 +37,13 @@ type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
 
+function ModalKeyboardAvoidingView({ children }: { children: React.ReactNode }) {
+  if (Platform.OS === 'web') {
+    return <View style={{ flex: 1, justifyContent: 'flex-end' }}>{children}</View>;
+  }
+  return <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} automaticOffset style={{ flex: 1, justifyContent: 'flex-end' }}>{children}</KeyboardAvoidingView>;
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -388,13 +395,14 @@ export default function HomeScreen() {
         <Modal visible={dhikrEditorOpen} transparent animationType="slide" onRequestClose={closeDhikrEditor}>
           <View style={styles.modalRoot}>
             <Pressable style={styles.modalBackdrop} onPress={closeDhikrEditor} />
+            <ModalKeyboardAvoidingView>
             <View style={[styles.sheet, styles.dhikrFormSheet, { backgroundColor: palette.card, borderColor: palette.border, paddingBottom: Math.max(insets.bottom, 18) + 10 }]}>
               <SheetHandle palette={palette} />
               <View style={styles.sheetHeader}>
                 <View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>{editingDhikrId ? 'Edit Dhikr' : 'Add Dhikr'}</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Name and target only</Text></View>
                 <Pressable accessibilityRole="button" accessibilityLabel="Close Dhikr form" onPress={closeDhikrEditor} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable>
               </View>
-              <KeyboardAwareScrollViewCompat bottomOffset={64} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.dhikrFormContent}>
+              <KeyboardAwareScrollViewCompat style={{ flexShrink: 1 }} bottomOffset={64} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.dhikrFormContent, { flexGrow: 1 }]}>
                 <TextInput testID="dhikr-name-input" accessibilityLabel="Dhikr name" value={dhikrNameDraft} onChangeText={setDhikrNameDraft} placeholder="Dhikr name *" placeholderTextColor={palette.muted} style={[styles.customTargetInput, { color: palette.foreground, backgroundColor: palette.surface, borderColor: palette.border }]} />
                 <Text style={[styles.sectionLabel, { color: palette.muted, marginTop: 6 }]}>TARGET</Text>
                 <View style={styles.targetPresetRow}>
@@ -405,6 +413,7 @@ export default function HomeScreen() {
                 <Pressable testID="save-dhikr" accessibilityRole="button" accessibilityLabel={editingDhikrId ? 'Save Dhikr changes' : 'Create Dhikr'} disabled={!dhikrNameDraft.trim() || (dhikrCustomTargetOpen && (!Number.isInteger(Number(dhikrTargetDraft)) || Number(dhikrTargetDraft) < 1 || Number(dhikrTargetDraft) > 999999))} onPress={saveDhikr} style={[styles.formSubmit, { backgroundColor: palette.primary, opacity: !dhikrNameDraft.trim() ? 0.45 : 1 }]}><Text style={[styles.targetPresetText, { color: palette.primaryForeground }]}>{editingDhikrId ? 'Save Changes' : 'Create Dhikr'}</Text></Pressable>
               </KeyboardAwareScrollViewCompat>
             </View>
+            </ModalKeyboardAvoidingView>
           </View>
         </Modal>
        <Modal visible={deleteDhikrId !== null} transparent animationType="fade" onRequestClose={() => setDeleteDhikrId(null)}><View style={styles.confirmRoot}><Pressable style={styles.modalBackdrop} onPress={() => setDeleteDhikrId(null)} /><View style={[styles.confirmCard, { backgroundColor: palette.card, borderColor: palette.border }]}><View style={[styles.confirmIcon, { backgroundColor: palette.destructive }]}><Feather name="trash-2" size={22} color={palette.primaryForeground} /></View><Text style={[styles.confirmTitle, { color: palette.foreground }]}>Delete Dhikr?</Text><Text style={[styles.confirmBody, { color: palette.muted }]}>Its current count and target will be removed. History and lifetime totals stay safe.</Text><View style={styles.confirmActions}><Pressable accessibilityRole="button" accessibilityLabel="Cancel delete" onPress={() => setDeleteDhikrId(null)} style={[styles.confirmButton, { backgroundColor: palette.surface }]}><Text style={[styles.confirmButtonText, { color: palette.foreground }]}>Cancel</Text></Pressable><Pressable testID="confirm-delete-dhikr" accessibilityRole="button" accessibilityLabel="Confirm delete Dhikr" onPress={confirmDeleteDhikr} style={[styles.confirmButton, { backgroundColor: palette.destructive }]}><Text style={[styles.confirmButtonText, { color: palette.primaryForeground }]}>Delete</Text></Pressable></View></View></View></Modal>

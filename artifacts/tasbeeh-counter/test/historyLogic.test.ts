@@ -86,6 +86,7 @@ mock.module('react-native', {
 });
 mock.module('react-native-keyboard-controller', {
   namedExports: {
+    KeyboardAvoidingView: HostView,
     KeyboardAwareScrollView: HostScrollView,
   },
 });

@@ -1,0 +1,474 @@
+Add a NEW theme to the existing Tasbeeh app:
+
+THEME #5 — “ARABESQUE WHITE”
+
+IMPORTANT:
+This is the FIFTH theme. Keep all existing themes unchanged and fully functional.
+
+Existing themes:
+1. Cosmic Lattice
+2. Aurora Pearlescent
+3. Golden Galaxy Etching
+4. Sandalwood Classic
+5. Arabesque White ← ADD THIS
+
+Do NOT modify, remove, overwrite, or replace the first four themes.
+
+The new theme must work through the existing theme-selection system. When the user selects “Arabesque White”, apply the theme consistently throughout the entire app.
+
+--------------------------------------------------
+CORE RULE — KEEP THE CURRENT APP LAYOUT
+--------------------------------------------------
+
+DO NOT redesign the app.
+
+Keep the EXACT existing layout and UX of the current Tasbeeh screen:
+
+• Tasbeeh title at the top
+• Settings icon
+• Bismillah/Dhikr selector
+• Large central digital tasbeeh counter
+• Counter button
+• Existing reset button
+• Existing Quran quote section
+• Existing bottom navigation
+• Tasbeeh
+• History
+• Stats
+• Dhikrs
+
+Do not move these components into a new layout.
+
+Do not introduce a new dashboard.
+
+Do not add extra cards that change the current screen structure.
+
+The objective is:
+
+“SAME APP + SAME LAYOUT + COMPLETELY NEW PREMIUM VISUAL SKIN”
+
+--------------------------------------------------
+ARABESQUE WHITE VISUAL IDENTITY
+--------------------------------------------------
+
+The theme should feel like:
+
+Luxury white marble
++
+Islamic Arabesque craftsmanship
++
+Antique gold
++
+Ivory
++
+Warm natural sunlight
++
+Elegant mosque architecture
+
+The overall feeling should be:
+
+• Peaceful
+• Premium
+• Clean
+• Spiritual
+• Elegant
+• Luxurious
+• Traditional but modern
+
+It should NOT look like a generic white/light mode.
+
+--------------------------------------------------
+COLOR PALETTE
+--------------------------------------------------
+
+Primary:
+
+• Ivory white
+• Warm white
+• Cream
+• White marble
+
+Accent:
+
+• Antique gold
+• Champagne gold
+• Soft bronze
+
+Secondary:
+
+• Very subtle dark brown
+• Warm charcoal
+
+Optional tiny accent:
+
+• Deep emerald green used sparingly in Islamic ornament details
+
+Avoid:
+
+• Neon colors
+• Bright blue
+• Purple
+• Strong red
+• Excessive gradients
+
+--------------------------------------------------
+MAIN COUNTER — MOST IMPORTANT
+--------------------------------------------------
+
+Transform the existing central tasbeeh counter into a premium:
+
+“WHITE MARBLE + GOLD ARABESQUE”
+
+digital counter.
+
+The counter should look like a real luxury physical object.
+
+Body:
+
+• White/ivory marble
+• Realistic natural marble veins
+• Subtle warm beige/gold veining
+• Smooth polished surface
+• Rounded ergonomic shape
+• Premium realistic material
+
+Add intricate Islamic Arabesque decoration around the counter:
+
+• Fine geometric patterns
+• Floral Islamic motifs
+• Small symmetrical gold details
+• Elegant ornamental borders
+
+Keep the design sophisticated.
+
+Do NOT cover every inch with decoration.
+
+The ornamentation should look handcrafted and expensive.
+
+DISPLAY:
+
+Keep the existing digital LCD display.
+
+Use:
+
+• Dark/charcoal display
+• Large black digital number
+• High contrast
+• Realistic LCD appearance
+
+Example:
+
+100
+
+The number must remain extremely readable.
+
+MAIN BUTTON:
+
+Replace the current visual appearance of the button with:
+
+• Brushed antique gold
+• Circular metallic button
+• Realistic concentric machining
+• Soft reflections
+• Premium metallic depth
+
+The button should look physically pressable.
+
+Add a subtle pressed animation when tapped.
+
+--------------------------------------------------
+BACKGROUND
+--------------------------------------------------
+
+Transform the current background into a bright luxury Islamic environment.
+
+Use:
+
+• White marble floor
+• Ivory architectural arches
+• Intricate Arabesque wall patterns
+• Elegant mosque courtyard
+• Soft sunlight
+• Warm golden lanterns
+• Subtle greenery
+• Mosque dome/minaret silhouettes
+• Soft depth of field
+
+The background should feel realistic and cinematic.
+
+Use shallow depth of field so the central counter remains the visual focus.
+
+Do NOT make the background too busy.
+
+--------------------------------------------------
+TOP HEADER
+--------------------------------------------------
+
+Keep the existing position and layout.
+
+“Tasbeeh”
+
+Use:
+
+• Elegant premium serif typography
+• Warm ivory/cream/gold appearance
+• Large but not oversized
+
+Add a subtle Arabesque decorative divider beneath the title.
+
+Settings icon:
+
+• Antique gold
+• Dark translucent circular background
+• Subtle gold border
+
+--------------------------------------------------
+BISMILLAH / DHIKR SELECTOR
+--------------------------------------------------
+
+Keep the existing selector in exactly the same location.
+
+Transform its appearance into:
+
+• Ivory translucent glass
+• White marble-inspired texture
+• Thin champagne-gold border
+• Soft shadow
+• Gold/black Arabic calligraphy icon
+• Elegant dark brown text
+
+Example:
+
+[ Allah icon ]   Bismillah                         ↓
+
+Keep it simple and premium.
+
+--------------------------------------------------
+QUOTE
+--------------------------------------------------
+
+Keep the Quran quote in the existing location.
+
+Use:
+
+Warm dark brown / charcoal typography.
+
+Quote:
+
+“In the remembrance of Allah
+do hearts find peace.”
+
+(Quran 13:28)
+
+Add a small elegant Arabesque ornament/divider around the quote.
+
+Do not put the quote inside a large card.
+
+It should feel integrated into the marble environment.
+
+--------------------------------------------------
+RESET BUTTON
+--------------------------------------------------
+
+Keep its current position and functionality.
+
+Use:
+
+• Dark brown/charcoal circular button
+• Antique gold border
+• Existing reset icon
+• Muted red icon is acceptable but should remain subtle
+
+Add a soft shadow.
+
+--------------------------------------------------
+BOTTOM NAVIGATION
+--------------------------------------------------
+
+KEEP THE EXISTING FOUR-TAB NAVIGATION:
+
+Tasbeeh
+History
+Stats
+Dhikrs
+
+Do not add/remove tabs.
+
+Transform the navigation into:
+
+• Deep espresso/charcoal translucent surface
+• Fine antique-gold border
+• Subtle Arabesque pattern around the edges
+• Cream inactive icons
+• Champagne-gold active icon
+• Gold active label
+• Small gold indicator beneath active tab
+
+The navigation should provide strong contrast against the bright marble background.
+
+--------------------------------------------------
+OTHER SCREENS
+--------------------------------------------------
+
+When Arabesque White is selected, apply the same visual language to ALL existing screens:
+
+• History
+• Stats
+• Dhikrs
+• Settings
+• Theme selection
+• Add/Edit Dhikr
+• Dialogs
+• Bottom sheets
+• Progress indicators
+• Charts
+• Empty states
+• Confirmation dialogs
+
+Do NOT change their existing functionality or layout.
+
+Only apply the Arabesque White visual styling.
+
+--------------------------------------------------
+HISTORY
+--------------------------------------------------
+
+Use:
+
+• Ivory background
+• White marble cards
+• Fine gold borders
+• Dark brown text
+• Champagne-gold highlights
+• Subtle Arabesque patterns
+
+--------------------------------------------------
+STATS
+--------------------------------------------------
+
+Keep existing charts and statistics.
+
+Use:
+
+• Antique gold
+• Champagne gold
+• Warm brown
+• Ivory
+• Muted emerald accents
+
+Avoid bright neon chart colors.
+
+--------------------------------------------------
+DHKIRS
+--------------------------------------------------
+
+Keep the existing Dhikr screen structure.
+
+Use elegant ivory cards with:
+
+• Fine gold borders
+• Arabesque patterns
+• Dark brown typography
+• Gold icons
+
+Selected Dhikr should have a subtle gold glow/border.
+
+--------------------------------------------------
+SETTINGS
+--------------------------------------------------
+
+Keep the existing settings structure.
+
+Use:
+
+• Ivory/cream sections
+• White marble cards
+• Gold icons
+• Dark brown text
+• Champagne-gold toggles
+• Subtle Arabesque dividers
+
+--------------------------------------------------
+THEME SELECTOR
+--------------------------------------------------
+
+Add “Arabesque White” as Theme #5.
+
+Theme preview should visually show:
+
+• White marble counter
+• Gold Arabesque detailing
+• Ivory environment
+
+Display:
+
+Arabesque White
+
+When selected, show the existing selected-theme indicator.
+
+--------------------------------------------------
+ANIMATIONS
+--------------------------------------------------
+
+Keep animations subtle and premium.
+
+Counter tap:
+
+• Slight physical button depression
+• Tiny scale animation
+• Soft gold highlight
+• Counter number changes smoothly
+• Existing vibration/haptic behavior remains unchanged
+
+UI buttons:
+
+• Slight press animation
+• Soft highlight
+• Smooth transition
+
+Avoid flashy animations.
+
+--------------------------------------------------
+MATERIAL QUALITY
+--------------------------------------------------
+
+The theme should prioritize realistic materials:
+
+WHITE MARBLE
+→ visible but subtle natural veins
+
+GOLD
+→ brushed/antique metallic appearance
+
+GLASS
+→ subtle translucent surfaces where appropriate
+
+WOOD
+→ only as a very minor decorative element if needed
+
+LIGHT
+→ warm natural sunlight
+
+Do not use flat solid colors everywhere.
+
+--------------------------------------------------
+FINAL DESIGN GOAL
+--------------------------------------------------
+
+The finished result should look like:
+
+“A luxury Islamic digital tasbeeh crafted from white marble and antique gold, displayed inside an elegant Arabesque mosque courtyard.”
+
+It should feel like a premium product/theme from a high-end design studio.
+
+Most importantly:
+
+DO NOT CHANGE THE CURRENT APP'S LAYOUT.
+
+DO NOT CHANGE EXISTING FEATURES.
+
+DO NOT CHANGE EXISTING NAVIGATION.
+
+DO NOT BREAK EXISTING THEMES.
+
+ONLY ADD THE NEW “ARABESQUE WHITE” THEME AS THE 5TH THEME AND APPLY ITS VISUAL DESIGN ACROSS THE EXISTING APP.
