@@ -13,7 +13,7 @@ import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
-const STORAGE_KEY = 'tasbeeh-counter-state-preview-arabesque-dhikrs';
+const STORAGE_KEY = 'tasbeeh-counter-state-v1';
 const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.png');
 const COUNTER_IMAGES: Record<AccentTheme, number> = {
   red: COUNTER_IMAGE,
@@ -34,7 +34,7 @@ const LEGACY_DHIKRS: Dhikr[] = [
 ];
 const ANONYMOUS_DHIKR_ID = '__tasbeeh__';
 const ANONYMOUS_DHIKR_NAME = 'Tasbeeh';
-const DEFAULT_STATE: AppState = { dhikrs: [{ id: 'preview-dhikr', name: 'Tasbeeh', icon: 'circle-double' }], selectedId: 'preview-dhikr', anonymousCount: 0, counters: { 'preview-dhikr': 0 }, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'arabesque-white', history: [] };
+const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', anonymousCount: 0, counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
 type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
@@ -54,7 +54,7 @@ export default function HomeScreen() {
   const [appState, setAppState] = useState<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
   const [counterAssetsReady, setCounterAssetsReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('dhikrs');
+  const [activeTab, setActiveTab] = useState<Tab>('counter');
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
