@@ -178,6 +178,24 @@ test('empty install counts immediately, persists anonymously, and still allows a
   }
 });
 
+test('Sandalwood Classic is selectable from Settings and persists across restart', async () => {
+  storedAppState = JSON.stringify(DEFAULT_STATE);
+  try {
+    const { fireEvent, render, waitFor } = await import('@testing-library/react-native/pure');
+    const { default: HomeScreen } = await import('../app/index.tsx');
+    const screen = await render(React.createElement(HomeScreen));
+
+    await fireEvent.press(screen.getByLabelText('Open settings'));
+    await waitFor(() => assert.ok(screen.getByTestId('accent-theme-sandalwood')));
+    await fireEvent.press(screen.getByTestId('accent-theme-sandalwood'));
+    await waitFor(() => assert.equal((JSON.parse(storedAppState) as AppState).accentTheme, 'sandalwood'));
+    assert.ok(screen.getByText('Selected'));
+    await screen.unmount();
+  } finally {
+    storedAppState = JSON.stringify(HISTORY_FIXTURE);
+  }
+});
+
 test('History tab drills into every grouped session and returns to the overview', async () => {
   const { fireEvent, render, waitFor } = await import('@testing-library/react-native/pure');
   const { default: HomeScreen } = await import('../app/index.tsx');

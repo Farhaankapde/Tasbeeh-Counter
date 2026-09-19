@@ -1,0 +1,10 @@
+---
+name: Free image cleanup
+description: A fallback for making generated raster assets transparent when the managed background-removal helper is unavailable.
+---
+
+The managed image-background removal helper may be unavailable in the free workspace mode. For generated assets with a light checkerboard background, a local ImageMagick alpha flood-fill can remove the connected background while preserving the darker product subject.
+
+**Why:** Transparent product cutouts are useful for compositing in mobile previews, but the managed helper is not always available.
+
+**How to apply:** Inspect corner and subject pixels first, use a conservative fuzz value, verify the output has an `srgba` channel and transparent corners, then visually inspect the result for checkerboard remnants.
