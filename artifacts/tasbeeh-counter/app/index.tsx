@@ -436,13 +436,14 @@ function HardwareCounter({ count, width, palette, counterImage, counterTheme, sc
   const lcdFontSize = getLcdFontSize(count);
   const materialTheme = counterTheme === 'sandalwood' || counterTheme === 'arabesque-white';
   const pressDepth = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (typeof Animated.spring === 'function') {
-      Animated.spring(pressDepth, { toValue: pressed ? 1 : 0, friction: 8, tension: 220, useNativeDriver: true }).start();
-    } else {
-      pressDepth.setValue(pressed ? 1 : 0);
-    }
-  }, [pressed, pressDepth]);
+  const animatePressDown = () => {
+    pressDepth.stopAnimation?.();
+    Animated.timing(pressDepth, { toValue: 1, duration: 65, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  };
+  const animatePressUp = () => {
+    pressDepth.stopAnimation?.();
+    Animated.timing(pressDepth, { toValue: 0, duration: 145, delay: 75, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  };
   const buttonScale = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
   const buttonTranslateY = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [0, 5] });
   const AnimatedDialSurface = Animated.View ?? View;
@@ -452,8 +453,9 @@ function HardwareCounter({ count, width, palette, counterImage, counterTheme, sc
       <View testID="counter-display" accessible accessibilityRole="text" accessibilityLabel="Current count" accessibilityLiveRegion="polite" accessibilityValue={{ text: display }} style={styles.liveDisplay}>
         <Animated.Text accessible={false} importantForAccessibility="no" style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
-    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
+    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
+    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { top: '52%', height: '30%', backgroundColor: 'rgba(0,0,0,0.24)', borderColor: 'rgba(0,0,0,0.34)', opacity: pressDepth, transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
+    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={() => { onPressIn(); animatePressDown(); }} onPressOut={() => { onPressOut(); animatePressUp(); }} style={[styles.dialHitArea, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
   </View>;
 }
 
