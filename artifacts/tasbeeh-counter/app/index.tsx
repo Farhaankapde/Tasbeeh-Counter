@@ -585,9 +585,9 @@ function SettingsModal({ visible, appState, palette, topInset, bottomInset, onCl
 function SettingRow({ icon, label, value, onValueChange, palette, feather = false }: { icon: string; label: string; value: boolean; onValueChange: (value: boolean) => void; palette: Palette; feather?: boolean }) { return <View style={styles.settingRow}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}>{feather ? <Feather name={icon as keyof typeof Feather.glyphMap} size={17} color={palette.primaryForeground} /> : <MaterialCommunityIcons name={icon as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color={palette.primaryForeground} />}</View><Text style={[styles.settingLabel, { color: palette.foreground }]}>{label}</Text><Switch testID={'toggle-' + label.toLowerCase().replace(' ', '-')} accessibilityLabel={'Toggle ' + label} value={value} onValueChange={onValueChange} trackColor={{ false: palette.surfaceStrong, true: palette.greenSoft }} thumbColor={value ? palette.primaryBright : palette.muted} ios_backgroundColor={palette.surfaceStrong} /></View>; }
 function AccentThemePicker({ value, onChange, palette }: { value: AccentTheme; onChange: (theme: AccentTheme) => void; palette: Palette }) {
   const options: Array<{ id: AccentTheme; label: string; color: string; image?: number }> = [
-    { id: 'red', label: 'Classic Red', color: colors.accents.red.primaryBright },
-    { id: 'green', label: 'Jannah Green', color: colors.accents.green.primaryBright },
-    { id: 'blue', label: 'Ocean Blue', color: colors.accents.blue.primaryBright },
+    { id: 'red', label: 'Classic Red', color: colors.accents.red.primaryBright, image: COUNTER_IMAGES.red },
+    { id: 'green', label: 'Jannah Green', color: colors.accents.green.primaryBright, image: COUNTER_IMAGES.green },
+    { id: 'blue', label: 'Ocean Blue', color: colors.accents.blue.primaryBright, image: COUNTER_IMAGES.blue },
     { id: 'sandalwood', label: 'Sandalwood Classic', color: colors.accents.sandalwood.primaryBright, image: COUNTER_IMAGES.sandalwood },
     { id: 'arabesque-white', label: 'Arabesque White', color: colors.accents['arabesque-white'].primaryBright, image: COUNTER_IMAGES['arabesque-white'] },
   ];
