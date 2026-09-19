@@ -68,6 +68,7 @@ mock.module('react-native', {
       timing: () => ({ start: () => undefined }),
     },
     AppState: { addEventListener: () => ({ remove: () => undefined }) },
+    BackHandler: { addEventListener: () => ({ remove: () => undefined }) },
     Easing: { out: (value: unknown) => value, quad: () => undefined },
     Image: HostImage,
     Modal: ({ visible, children, ...props }: { visible: boolean; children?: React.ReactNode }) => visible ? React.createElement('Modal', props, children) : null,
@@ -81,6 +82,11 @@ mock.module('react-native', {
     TextInput: HostTextInput,
     View: HostView,
     useWindowDimensions: () => ({ width: 400, height: 800, scale: 1, fontScale: 1 }),
+  },
+});
+mock.module('react-native-keyboard-controller', {
+  namedExports: {
+    KeyboardAwareScrollView: HostScrollView,
   },
 });
 const mockIcon = ({ name }: { name: string }) => React.createElement('Text', null, name);
