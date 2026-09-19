@@ -20,7 +20,7 @@ const COUNTER_IMAGES: Record<AccentTheme, number> = {
   green: require('../assets/images/realistic-counter-green.png'),
   blue: require('../assets/images/realistic-counter-blue.png'),
   sandalwood: require('../assets/images/realistic-counter-sandalwood.png'),
-  'arabesque-white': require('../assets/images/realistic-counter-arabesque-white.png'),
+  'arabesque-white': require('../assets/images/realistic-counter-arabesque-white-aligned.png'),
 };
 const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
 const ARABESQUE_BACKGROUND = require('../assets/images/arabesque-white-background.png');
