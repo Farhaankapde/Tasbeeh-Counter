@@ -4,3 +4,4 @@
 - [Large Expo stylesheets](large-expo-stylesheets.md) — make narrowly targeted edits to the app’s long single-line StyleSheet blocks to avoid dropping adjacent definitions.
 - [Android EAS builds](android-eas-builds.md) — Replit previews Expo apps but EAS native compilation must run through an external EAS workflow.
 - [Free image cleanup](media-background-cleanup.md) — when AI background removal is unavailable, ImageMagick can preserve a generated asset with local alpha cleanup.
+- [WebP asset optimization](webp-asset-optimization.md) — WebP conversions need runtime MIME support and Node test-loader mocks.

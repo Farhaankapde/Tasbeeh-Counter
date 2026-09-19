@@ -46,6 +46,7 @@ let storedAppState = JSON.stringify(HISTORY_FIXTURE);
 const require = createRequire(import.meta.url);
 require.extensions['.wav'] = () => {};
 require.extensions['.png'] = () => {};
+require.extensions['.webp'] = () => {};
 
 const hostComponent = (name: string) => (props: Record<string, unknown>) => React.createElement(name, props, props.children as React.ReactNode);
 const HostView = hostComponent('View');

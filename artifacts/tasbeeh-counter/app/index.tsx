@@ -14,23 +14,23 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
 const STORAGE_KEY = 'tasbeeh-counter-state-v1';
-const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.png');
+const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.webp');
 const COUNTER_IMAGES: Record<AccentTheme, number> = {
   red: COUNTER_IMAGE,
-  green: require('../assets/images/realistic-counter-green.png'),
-  blue: require('../assets/images/realistic-counter-blue.png'),
-  sandalwood: require('../assets/images/realistic-counter-sandalwood.png'),
-  'arabesque-white': require('../assets/images/realistic-counter-arabesque-white-aligned.png'),
+  green: require('../assets/images/realistic-counter-green.webp'),
+  blue: require('../assets/images/realistic-counter-blue.webp'),
+  sandalwood: require('../assets/images/realistic-counter-sandalwood.webp'),
+  'arabesque-white': require('../assets/images/realistic-counter-arabesque-white-aligned.webp'),
 };
 const DIAL_IMAGES: Record<AccentTheme, number> = {
-  red: require('../assets/images/counter-dial-polished.png'),
-  green: require('../assets/images/counter-dial-green.png'),
-  blue: require('../assets/images/counter-dial-blue.png'),
-  sandalwood: require('../assets/images/counter-dial-sandalwood.png'),
-  'arabesque-white': require('../assets/images/counter-dial-arabesque-white-aligned.png'),
+  red: require('../assets/images/counter-dial-polished.webp'),
+  green: require('../assets/images/counter-dial-green.webp'),
+  blue: require('../assets/images/counter-dial-blue.webp'),
+  sandalwood: require('../assets/images/counter-dial-sandalwood.webp'),
+  'arabesque-white': require('../assets/images/counter-dial-arabesque-white-aligned.webp'),
 };
-const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
-const ARABESQUE_BACKGROUND = require('../assets/images/arabesque-white-background.png');
+const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.webp');
+const ARABESQUE_BACKGROUND = require('../assets/images/arabesque-white-background.webp');
 const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
   { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
