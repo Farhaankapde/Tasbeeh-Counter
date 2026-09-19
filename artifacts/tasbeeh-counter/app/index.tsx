@@ -13,7 +13,7 @@ import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
-const STORAGE_KEY = 'tasbeeh-counter-state-v1';
+const STORAGE_KEY = 'tasbeeh-counter-state-preview-arabesque-dhikrs';
 const COUNTER_IMAGE = require('../assets/images/realistic-counter-polished.png');
 const COUNTER_IMAGES: Record<AccentTheme, number> = {
   red: COUNTER_IMAGE,
@@ -34,7 +34,7 @@ const LEGACY_DHIKRS: Dhikr[] = [
 ];
 const ANONYMOUS_DHIKR_ID = '__tasbeeh__';
 const ANONYMOUS_DHIKR_NAME = 'Tasbeeh';
-const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', anonymousCount: 0, counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
+const DEFAULT_STATE: AppState = { dhikrs: [{ id: 'preview-dhikr', name: 'Tasbeeh', icon: 'circle-double' }], selectedId: 'preview-dhikr', anonymousCount: 0, counters: { 'preview-dhikr': 0 }, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'arabesque-white', history: [] };
 type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
@@ -54,7 +54,7 @@ export default function HomeScreen() {
   const [appState, setAppState] = useState<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
   const [counterAssetsReady, setCounterAssetsReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('counter');
+  const [activeTab, setActiveTab] = useState<Tab>('dhikrs');
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -379,8 +379,8 @@ export default function HomeScreen() {
            <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: isArabesqueWhite ? 'rgba(255, 253, 247, 0.9)' : isSandalwood ? 'rgba(42, 27, 19, 0.92)' : appState.theme === 'light' ? palette.card : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
            <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} disabled={anonymousCounter} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
               <DhikrMark palette={palette} size={compactCounter ? 48 : 54} />
-             <View style={styles.selectorCopy}><Text style={[styles.selectorName, compactCounter && { fontSize: 14, lineHeight: 18 }, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, compactCounter && { fontSize: 10 }, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View>
-             {anonymousCounter ? null : <Feather name="chevron-down" size={20} color={palette.foreground} />}
+              <View style={styles.selectorCopy}><Text style={[styles.selectorName, compactCounter && { fontSize: 14, lineHeight: 18 }, { color: isArabesqueWhite ? colors.arabesqueWhite.light.foreground : palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, compactCounter && { fontSize: 10 }, { color: isArabesqueWhite ? colors.arabesqueWhite.light.muted : palette.muted }]}>{selectedDhikr.arabic}</Text></View>
+              {anonymousCounter ? null : <Feather name="chevron-down" size={20} color={isArabesqueWhite ? colors.arabesqueWhite.light.foreground : palette.foreground} />}
           </Pressable>
            {selectedTarget ? <View accessibilityLabel={`Target ${selectedTarget}`} style={[styles.targetPill, { backgroundColor: palette.primary }]}>
             <MaterialCommunityIcons name={completionFlash ? 'check-circle' : 'target'} size={14} color={selectedTarget ? palette.primaryForeground : palette.primaryBright} />
@@ -531,7 +531,7 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
            {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your Dhikr Library is Empty" body="Add your first Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, styles.premiumLibraryRow, { minHeight: 92, borderRadius: 22, paddingHorizontal: 13, backgroundColor: appState.accentTheme === 'sandalwood' ? 'rgba(42, 27, 19, 0.92)' : appState.accentTheme === 'arabesque-white' ? 'rgba(255, 253, 247, 0.9)' : 'rgba(25, 22, 21, 0.9)', borderColor: palette.border, shadowColor: palette.primary, shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 6 }]}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Select ${item.name}`} onPress={() => onChooseDhikr(item.id)} style={[styles.librarySelect, { minHeight: 78 }]}>
               <DhikrMark palette={palette} size={56} />
-              <View style={[styles.historyCopy, { paddingLeft: 14 }]}><Text style={[styles.historyName, { color: palette.foreground, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 18 }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.libraryTarget, { color: palette.muted, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 13, marginTop: 5 }]}>Target: {appState.targets[item.id] ? appState.targets[item.id] : 'Not set'}</Text></View>
+               <View style={[styles.historyCopy, { paddingLeft: 14 }]}><Text style={[styles.historyName, { color: appState.accentTheme === 'arabesque-white' ? colors.arabesqueWhite.light.foreground : palette.foreground, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 18 }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.libraryTarget, { color: appState.accentTheme === 'arabesque-white' ? colors.arabesqueWhite.light.muted : palette.muted, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 13, marginTop: 5 }]}>Target: {appState.targets[item.id] ? appState.targets[item.id] : 'Not set'}</Text></View>
             </Pressable>
              <View style={[styles.libraryMeta, { alignItems: 'center', justifyContent: 'center', gap: 8, paddingLeft: 5 }]}><Feather name="chevron-right" size={23} color={palette.foreground} /><View style={[styles.libraryActions, { gap: 2 }]}><Pressable testID={`edit-dhikr-${item.id}`} accessibilityRole="button" accessibilityLabel={`Edit ${item.name}`} onPress={() => onEditDhikr(item)} style={[styles.libraryAction, { backgroundColor: 'transparent', opacity: 0.58 }]}><Feather name="edit-3" size={14} color={palette.muted} /></Pressable><Pressable testID={`delete-dhikr-${item.id}`} accessibilityRole="button" accessibilityLabel={`Delete ${item.name}`} onPress={() => onDeleteDhikr(item.id)} style={[styles.libraryAction, { backgroundColor: 'transparent', opacity: 0.58 }]}><Feather name="trash-2" size={14} color={palette.muted} /></Pressable></View></View>
           </View>)}
