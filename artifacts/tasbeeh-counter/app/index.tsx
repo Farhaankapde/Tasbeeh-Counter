@@ -44,9 +44,20 @@ const ANONYMOUS_DHIKR_ID = '__tasbeeh__';
 const ANONYMOUS_DHIKR_NAME = 'Tasbeeh';
 const DEFAULT_STATE: AppState = { dhikrs: [], selectedId: '', anonymousCount: 0, counters: {}, targets: {}, dailyCounts: {}, dailyCountsByDhikr: {}, lifetimeCount: 0, lifetimeCountsByDhikr: {}, vibration: true, sound: true, counterAnimation: true, autoSave: true, stopAtTarget: false, theme: 'dark', accentTheme: 'red', history: [] };
 const PERSISTENCE_WARNING = "Unable to save your latest progress. We'll retry automatically.";
+const PERSISTENCE_READ_TIMEOUT_MS = 2000;
 type Palette = { [Key in keyof typeof colors.dark]: string };
 
 type Tab = 'counter' | 'history' | 'stats' | 'dhikrs';
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Saved state read timed out')), timeoutMs);
+    promise.then(
+      (value) => { clearTimeout(timeout); resolve(value); },
+      (error: unknown) => { clearTimeout(timeout); reject(error); },
+    );
+  });
+}
 
 function ModalKeyboardAvoidingView({ children }: { children: React.ReactNode }) {
   if (Platform.OS === 'web') {
@@ -138,7 +149,7 @@ export default function HomeScreen() {
     const hydrate = async () => {
       let raw: string | null;
       try {
-        raw = await retryAsync(() => AsyncStorage.getItem(STORAGE_KEY), { attempts: 2, delayMs: 75 });
+        raw = await withTimeout(retryAsync(() => AsyncStorage.getItem(STORAGE_KEY), { attempts: 2, delayMs: 75 }), PERSISTENCE_READ_TIMEOUT_MS);
       } catch (error: unknown) {
         if (__DEV__) console.error('Tasbeeh persistence read failed:', error);
         if (active) {
@@ -464,9 +475,9 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={isSandalwood || isArabesqueWhite ? [palette.background, palette.card, palette.background] : appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle={appState.theme === 'light' ? 'dark-content' : 'light-content'} />
-       {activeTab === 'counter' ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
+       {activeTab === 'counter' ? <View pointerEvents="box-none" style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
         <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={isSandalwood} arabesqueWhite={isArabesqueWhite} />
-         <View style={[styles.counterLayer, { flex: 1, minHeight: 0 }]}>
+         <View pointerEvents="box-none" style={[styles.counterLayer, { flex: 1, minHeight: 0 }]}>
            <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, (isSandalwood || isArabesqueWhite) && { fontStyle: 'normal', fontWeight: '400' }, { color: palette.foreground, textShadowColor: palette.primary, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 10 }]}>Tasbeeh</Text>{isSandalwood || isArabesqueWhite ? <View style={[themeStyles.titleDivider, { backgroundColor: palette.primaryBright }]} /> : null}</View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} accent={isSandalwood || isArabesqueWhite} disabled={!hydrated} /></View>
             <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: appState.theme === 'light' ? palette.card : isArabesqueWhite ? 'rgba(255, 253, 247, 0.9)' : isSandalwood ? 'rgba(42, 27, 19, 0.92)' : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
             <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} accessibilityState={{ disabled: !hydrated || anonymousCounter }} disabled={!hydrated || anonymousCounter} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
@@ -646,7 +657,7 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
 }
 
 function EmptyPanel({ icon, title, body, palette }: { icon: keyof typeof Feather.glyphMap; title: string; body: string; palette: Palette }) { return <View style={[styles.emptyPanel, styles.premiumEmptyPanel, { backgroundColor: palette.card, borderColor: palette.border }]}><Feather name={icon} size={25} color={palette.primaryBright} /><Text style={[styles.emptyTitle, { color: palette.foreground }]}>{title}</Text><Text style={[styles.emptyBody, { color: palette.muted }]}>{body}</Text></View>; }
- function TabBar({ activeTab, palette, onChange, bottomInset }: { activeTab: Tab; palette: Palette; onChange: (tab: Tab) => void; bottomInset: number }) { const items: Array<{ id: Tab; label: string; icon: keyof typeof Feather.glyphMap }> = [{ id: 'counter', label: 'Tasbeeh', icon: 'smartphone' }, { id: 'history', label: 'History', icon: 'list' }, { id: 'stats', label: 'Stats', icon: 'bar-chart-2' }, { id: 'dhikrs', label: 'Dhikrs', icon: 'bookmark' }]; return <View style={[styles.tabBar, styles.premiumTabBar, { backgroundColor: palette.background, borderTopColor: palette.border, paddingBottom: Math.max(bottomInset, 9) }]}>{items.map((item) => { const active = activeTab === item.id; return <Pressable key={item.id} testID={`open-${item.id}`} accessibilityRole="button" accessibilityLabel={'Open ' + item.label} onPress={() => onChange(item.id)} style={({ pressed: p }) => [styles.tabItem, p && styles.pressed]}><View style={styles.tabIconWrap}><Feather name={item.icon} size={21} color={active ? palette.primaryBright : palette.muted} /></View><Text style={[styles.tabLabel, { color: active ? palette.primaryBright : palette.muted }]}>{item.label}</Text>{active ? <View style={[themeStyles.themeTabIndicator, { backgroundColor: palette.primaryBright, shadowColor: palette.primaryBright }]} /> : null}</Pressable>; })}</View>; }
+function TabBar({ activeTab, palette, onChange, bottomInset }: { activeTab: Tab; palette: Palette; onChange: (tab: Tab) => void; bottomInset: number }) { const items: Array<{ id: Tab; label: string; icon: keyof typeof Feather.glyphMap }> = [{ id: 'counter', label: 'Tasbeeh', icon: 'smartphone' }, { id: 'history', label: 'History', icon: 'list' }, { id: 'stats', label: 'Stats', icon: 'bar-chart-2' }, { id: 'dhikrs', label: 'Dhikrs', icon: 'bookmark' }]; return <View style={[styles.tabBar, styles.premiumTabBar, { backgroundColor: palette.background, borderTopColor: palette.border, paddingBottom: Math.max(bottomInset, 9), zIndex: 40 }]}>{items.map((item) => { const active = activeTab === item.id; return <Pressable key={item.id} testID={`open-${item.id}`} accessibilityRole="button" accessibilityLabel={'Open ' + item.label} onPress={() => onChange(item.id)} style={({ pressed: p }) => [styles.tabItem, p && styles.pressed]}><View style={styles.tabIconWrap}><Feather name={item.icon} size={21} color={active ? palette.primaryBright : palette.muted} /></View><Text style={[styles.tabLabel, { color: active ? palette.primaryBright : palette.muted }]}>{item.label}</Text>{active ? <View style={[themeStyles.themeTabIndicator, { backgroundColor: palette.primaryBright, shadowColor: palette.primaryBright }]} /> : null}</Pressable>; })}</View>; }
 function IconButton({ icon, label, onPress, palette, accent = false, disabled = false }: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void; palette: Palette; accent?: boolean; disabled?: boolean }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed: p }) => [styles.iconButton, { opacity: disabled ? 0.45 : p ? 0.66 : 1 }]}><Feather name={icon} size={25} color={accent ? palette.primaryBright : palette.foreground} /></Pressable>; }
 function SettingsModal({ visible, stateReady, appState, palette, topInset, bottomInset, onClose, onChange }: { visible: boolean; stateReady: boolean; appState: AppState; palette: Palette; topInset: number; bottomInset: number; onClose: () => void; onChange: <Key extends keyof AppState>(key: Key, value: AppState[Key]) => void }) {
   return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

@@ -13,6 +13,8 @@ test('counter screen remains fixed and does not introduce a scrolling container'
 
   assert.doesNotMatch(counterSource, /<ScrollView|<FlatList|<SectionList|<VirtualizedList/);
   assert.match(counterSource, /styles\.counterScroll/);
+  assert.match(counterSource, /pointerEvents="box-none"/);
+  assert.match(appSource, /paddingBottom: Math\.max\(bottomInset, 9\), zIndex: 40/);
   assert.match(appSource, /<TabBar/);
 });
 
@@ -20,6 +22,8 @@ test('persisted state controls are hydration-gated', () => {
   assert.match(appSource, /disabled=\{!hydrated\}/);
   assert.match(appSource, /stateReady=\{hydrated\}/);
   assert.match(appSource, /if \(!hydrated\) return;/);
+  assert.match(appSource, /PERSISTENCE_READ_TIMEOUT_MS/);
+  assert.match(appSource, /withTimeout\(retryAsync/);
 });
 
 test('Arabesque White keeps one shared hardware counter overlay and aligned assets', () => {
