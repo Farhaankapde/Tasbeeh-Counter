@@ -16,6 +16,7 @@ import {
   type DhikrRecord,
   type HistoryEntry,
 } from '../lib/counterLogic.ts';
+import { retryAsync } from '../lib/persistence.ts';
 
 const LEGACY_DHIKRS: DhikrRecord[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
@@ -399,6 +400,30 @@ test('rapid persistence coalesces queued writes and restores the final state aft
   const restored = await simulateAppRestart(storage);
   assert.equal(restored.counters.subhanallah, 999999);
   assert.equal(restored.lifetimeCountsByDhikr.subhanallah, 999999);
+});
+
+test('persistence reads retry transient storage failures before succeeding', async () => {
+  let attempts = 0;
+  const value = await retryAsync(async () => {
+    attempts += 1;
+    if (attempts < 3) throw new Error('temporary storage failure');
+    return '{"safe":true}';
+  }, { attempts: 3, delayMs: 0 });
+
+  assert.equal(value, '{"safe":true}');
+  assert.equal(attempts, 3);
+});
+
+test('persistence writes preserve the current state when all retries fail', async () => {
+  let attempts = 0;
+  await assert.rejects(
+    retryAsync(async () => {
+      attempts += 1;
+      throw new Error('storage unavailable');
+    }, { attempts: 3, delayMs: 0 }),
+    /storage unavailable/,
+  );
+  assert.equal(attempts, 3);
 });
 
 test('migration filters malformed history without discarding valid sessions', () => {

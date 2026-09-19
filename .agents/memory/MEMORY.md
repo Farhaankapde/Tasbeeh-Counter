@@ -5,3 +5,4 @@
 - [Android EAS builds](android-eas-builds.md) — Replit previews Expo apps but EAS native compilation must run through an external EAS workflow.
 - [Free image cleanup](media-background-cleanup.md) — when AI background removal is unavailable, ImageMagick can preserve a generated asset with local alpha cleanup.
 - [WebP asset optimization](webp-asset-optimization.md) — WebP conversions need runtime MIME support and Node test-loader mocks.
+- [Expo SDK 57 configuration](expo-sdk57-config.md) — configure explicit splash assets through the expo-splash-screen plugin, not the legacy top-level field.

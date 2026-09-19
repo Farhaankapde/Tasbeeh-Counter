@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const net = require('net');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 
@@ -23,7 +24,7 @@ function findWorkspaceRoot(startDir) {
 
 const workspaceRoot = findWorkspaceRoot(projectRoot);
 const basePath = (process.env.BASE_PATH || '/').replace(/\/+$/, '');
-const metroPort = Number(process.env.METRO_BUILD_PORT || 8082);
+let metroPort = Number(process.env.METRO_BUILD_PORT || 8082);
 
 function exitWithError(message) {
   console.error(message);
@@ -115,9 +116,9 @@ function clearMetroCache() {
   console.log('Cache cleared');
 }
 
-async function checkMetroHealth() {
+async function checkMetroHealth(port = metroPort) {
   try {
-    const response = await fetch(`http://localhost:${metroPort}/status`, {
+    const response = await fetch(`http://localhost:${port}/status`, {
       signal: AbortSignal.timeout(5000),
     });
     return response.ok;
@@ -126,18 +127,44 @@ async function checkMetroHealth() {
   }
 }
 
+function isPortAvailable(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function selectMetroPort() {
+  if (await checkMetroHealth()) return metroPort;
+
+  const startingPort = Number.isInteger(metroPort) && metroPort > 0 ? metroPort : 8082;
+  for (let offset = 0; offset < 20; offset += 1) {
+    const candidate = startingPort + offset;
+    if (await isPortAvailable(candidate)) {
+      metroPort = candidate;
+      return metroPort;
+    }
+  }
+
+  throw new Error(`No available Metro port found starting at ${startingPort}`);
+}
+
 function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
 }
 
 async function startMetro(expoPublicDomain, expoPublicReplId) {
-  const isRunning = await checkMetroHealth();
-  if (isRunning) {
+  const selectedPort = await selectMetroPort();
+  if (await checkMetroHealth(selectedPort)) {
     console.log('Metro already running');
     return;
   }
 
-  console.log('Starting Metro...');
+  console.log(`Starting Metro on port ${selectedPort}...`);
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
   const env = {
     ...process.env,
