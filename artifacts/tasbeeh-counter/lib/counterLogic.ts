@@ -1,5 +1,5 @@
 export type CountFeedback = 'target' | 'milestone' | 'tap';
-export type AccentTheme = 'red' | 'green' | 'blue' | 'sandalwood';
+export type AccentTheme = 'red' | 'green' | 'blue' | 'sandalwood' | 'arabesque-white';
 export type DhikrRecord = { id: string; name: string; arabic?: string; translation?: string; icon: string };
 export type HistoryEntry = { id: string; dhikr: string; dhikrId?: string; repetitions: number; time: string; date?: string };
 export type AppState = {
@@ -204,7 +204,7 @@ export function migrateStoredState(value: unknown, defaults: AppState, legacyDhi
     autoSave: true,
     stopAtTarget: parsed.stopAtTarget === true,
     theme: parsed.theme === 'light' ? 'light' : 'dark',
-    accentTheme: parsed.accentTheme === 'green' || parsed.accentTheme === 'blue' || parsed.accentTheme === 'sandalwood' ? parsed.accentTheme : 'red',
+    accentTheme: parsed.accentTheme === 'green' || parsed.accentTheme === 'blue' || parsed.accentTheme === 'sandalwood' || parsed.accentTheme === 'arabesque-white' ? parsed.accentTheme : 'red',
     history,
   };
 }

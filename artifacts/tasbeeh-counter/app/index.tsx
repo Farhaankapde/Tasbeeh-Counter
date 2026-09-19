@@ -20,8 +20,10 @@ const COUNTER_IMAGES: Record<AccentTheme, number> = {
   green: require('../assets/images/realistic-counter-green.png'),
   blue: require('../assets/images/realistic-counter-blue.png'),
   sandalwood: require('../assets/images/realistic-counter-sandalwood.png'),
+  'arabesque-white': require('../assets/images/realistic-counter-arabesque-white.png'),
 };
 const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
+const ARABESQUE_BACKGROUND = require('../assets/images/arabesque-white-background.png');
 const LEGACY_DHIKRS: Dhikr[] = [
   { id: 'subhanallah', name: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', icon: 'circle-double' },
   { id: 'alhamdulillah', name: 'Alhamdulillah', arabic: 'ٱلْحَمْدُ لِلَّٰهِ', icon: 'flower-tulip' },
@@ -75,10 +77,13 @@ export default function HomeScreen() {
   const feedbackTriggered = useRef(new Set<string>());
   const activeHistorySessionId = useRef<string | null>(null);
   const isSandalwood = appState.accentTheme === 'sandalwood';
+  const isArabesqueWhite = appState.accentTheme === 'arabesque-white';
   const basePalette = isSandalwood
     ? (appState.theme === 'light' ? colors.sandalwood.light : colors.sandalwood.dark)
-    : (appState.theme === 'light' ? colors.light : colors.dark);
-  const palette: Palette = { ...basePalette, ...(isSandalwood ? {} : colors.accents[appState.accentTheme]) };
+    : isArabesqueWhite
+      ? (appState.theme === 'light' ? colors.arabesqueWhite.light : colors.arabesqueWhite.dark)
+      : (appState.theme === 'light' ? colors.light : colors.dark);
+  const palette: Palette = { ...basePalette, ...(isSandalwood || isArabesqueWhite ? {} : colors.accents[appState.accentTheme]) };
   const selectedDhikr = useMemo(() => appState.dhikrs.find((item) => item.id === appState.selectedId) ?? appState.dhikrs[0] ?? ({ id: ANONYMOUS_DHIKR_ID, name: ANONYMOUS_DHIKR_NAME, arabic: '', icon: 'circle-double' } as Dhikr), [appState.dhikrs, appState.selectedId]);
   const anonymousCounter = selectedDhikr.id === ANONYMOUS_DHIKR_ID;
   const currentCount = anonymousCounter ? appState.anonymousCount : appState.counters[selectedDhikr.id] ?? 0;
@@ -162,7 +167,7 @@ export default function HomeScreen() {
   useEffect(() => {
     let active = true;
     const preloadCounterAssets = async () => {
-      const uris = [...Object.values(COUNTER_IMAGES), CINEMATIC_BACKGROUND]
+      const uris = [...Object.values(COUNTER_IMAGES), CINEMATIC_BACKGROUND, ARABESQUE_BACKGROUND]
         .map((source) => {
           try {
             return Image.resolveAssetSource(source)?.uri;
@@ -365,13 +370,13 @@ export default function HomeScreen() {
   };
 
   return (
-    <LinearGradient colors={isSandalwood ? [palette.background, palette.card, palette.background] : appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
+    <LinearGradient colors={isSandalwood || isArabesqueWhite ? [palette.background, palette.card, palette.background] : appState.theme === 'light' ? [palette.background, '#e9e4de', palette.background] : [palette.background, '#171211', palette.background]} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.root}>
       <StatusBar barStyle={appState.theme === 'light' ? 'dark-content' : 'light-content'} />
       {activeTab === 'counter' ? <View style={[styles.counterScroll, { overflow: 'hidden', paddingHorizontal: 21, paddingTop: counterSafeTop + 8, paddingBottom: 80 + Math.max(insets.bottom, 14) }]}>
-        <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={isSandalwood} />
+        <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={isSandalwood} arabesqueWhite={isArabesqueWhite} />
          <View style={[styles.counterLayer, { flex: 1, minHeight: 0 }]}>
-           <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, isSandalwood && { fontStyle: 'normal', fontWeight: '400' }, { color: palette.foreground, textShadowColor: palette.primary, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 10 }]}>Tasbeeh</Text>{isSandalwood ? <View style={[themeStyles.titleDivider, { backgroundColor: palette.primaryBright }]} /> : null}</View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} accent={isSandalwood} /></View>
-          <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: isSandalwood ? 'rgba(42, 27, 19, 0.92)' : appState.theme === 'light' ? palette.card : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
+           <View style={[styles.topBar, styles.referenceTopBar, compactCounter && styles.referenceTopBarCompact]}><View style={styles.counterHeaderCopy}><Text style={[styles.counterTitle, (isSandalwood || isArabesqueWhite) && { fontStyle: 'normal', fontWeight: '400' }, { color: palette.foreground, textShadowColor: palette.primary, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 10 }]}>Tasbeeh</Text>{isSandalwood || isArabesqueWhite ? <View style={[themeStyles.titleDivider, { backgroundColor: palette.primaryBright }]} /> : null}</View><IconButton icon="settings" label="Open settings" onPress={() => setSettingsOpen(true)} palette={palette} accent={isSandalwood || isArabesqueWhite} /></View>
+           <View style={[styles.selector, styles.referenceSelector, compactCounter && styles.referenceSelectorCompact, styles.premiumSelector, { backgroundColor: isArabesqueWhite ? 'rgba(255, 253, 247, 0.9)' : isSandalwood ? 'rgba(42, 27, 19, 0.92)' : appState.theme === 'light' ? palette.card : 'rgba(30, 30, 30, 0.9)', borderColor: completionFlash ? palette.primaryBright : palette.border }]}>
            <Pressable testID="dhikr-selector" accessibilityRole="button" accessibilityLabel={'Select Dhikr, currently ' + selectedDhikr.name} disabled={anonymousCounter} onPress={() => setSelectorOpen(true)} style={({ pressed: selectorPressed }) => [styles.selectorMain, { opacity: selectorPressed ? 0.82 : 1 }]}>
               <DhikrMark palette={palette} size={compactCounter ? 48 : 54} />
              <View style={styles.selectorCopy}><Text style={[styles.selectorName, compactCounter && { fontSize: 14, lineHeight: 18 }, { color: palette.foreground }]}>{selectedDhikr.name}</Text><Text style={[styles.arabic, compactCounter && { fontSize: 10 }, { color: palette.muted }]}>{selectedDhikr.arabic}</Text></View>
@@ -383,9 +388,9 @@ export default function HomeScreen() {
            </View> : null}
            {selectedTarget ? <View style={[styles.selectorProgressTrack, { backgroundColor: palette.surfaceStrong }]}><Animated.View style={[styles.selectorProgress, { width: animatedProgressWidth, backgroundColor: completionFlash ? palette.primaryBright : palette.primary, shadowColor: palette.primaryBright }]} /></View> : null}
         </View>
-            <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} counterImage={COUNTER_IMAGES[appState.accentTheme]} sandalwood={isSandalwood} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
+             <View style={[styles.counterDeviceStage, compactCounter && styles.counterDeviceStageCompact, { flex: 1 }]}><View style={[styles.deviceContactShadow, pressed && { opacity: 0.18, transform: [{ scaleX: 0.78 }, { translateY: 2 }] }]} />{counterAssetsReady ? <HardwareCounter count={currentCount} width={deviceWidth} palette={palette} counterImage={COUNTER_IMAGES[appState.accentTheme]} counterTheme={appState.accentTheme} scale={scale} pressed={pressed} completionFlash={completionFlash} disabled={!hydrated} onPress={increment} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)} /> : <View style={[styles.hardware, { width: deviceWidth, height: deviceWidth * 1.38, backgroundColor: palette.surfaceStrong, opacity: 0.35 }]} />}</View>
           <View style={[styles.counterQuote, compactCounter && styles.counterQuoteCompact, { marginBottom: 50 }]}><Text style={[styles.counterQuoteText, { color: palette.foreground }]}>“In the remembrance of Allah{'\n'}do hearts find peace.”</Text><View style={[styles.counterQuoteRule, { backgroundColor: palette.primaryBright }]} /><Text style={[styles.counterQuoteCitation, { color: palette.muted }]}>(Quran 13:28)</Text></View>
-            <View pointerEvents="box-none" style={{ alignItems: 'flex-end', marginTop: compactCounter ? 0 : 3, paddingRight: 3, position: 'absolute', right: 0, bottom: 4, zIndex: 10, elevation: 10 }}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} hitSlop={10} onPressIn={() => { if (appStateRef.current.vibration) Haptics.selectionAsync().catch(() => undefined); }} onPress={() => setResetting(true)} style={({ pressed: p }) => [{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: isSandalwood ? palette.primary : palette.border, backgroundColor: 'rgba(18, 18, 18, 0.68)', alignItems: 'center', justifyContent: 'center', shadowColor: palette.primary, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ scale: p ? 0.9 : 1 }], opacity: p ? 0.78 : 1 }]}><Feather name="rotate-ccw" size={18} color={isSandalwood ? palette.destructive : palette.primaryBright} /></Pressable></View>
+             <View pointerEvents="box-none" style={{ alignItems: 'flex-end', marginTop: compactCounter ? 0 : 3, paddingRight: 3, position: 'absolute', right: 0, bottom: 4, zIndex: 10, elevation: 10 }}><Pressable testID="reset-counter" accessibilityRole="button" accessibilityLabel={'Reset ' + selectedDhikr.name + ' counter'} hitSlop={10} onPressIn={() => { if (appStateRef.current.vibration) Haptics.selectionAsync().catch(() => undefined); }} onPress={() => setResetting(true)} style={({ pressed: p }) => [{ width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: isSandalwood || isArabesqueWhite ? palette.primary : palette.border, backgroundColor: 'rgba(18, 18, 18, 0.68)', alignItems: 'center', justifyContent: 'center', shadowColor: palette.primary, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ scale: p ? 0.9 : 1 }], opacity: p ? 0.78 : 1 }]}><Feather name="rotate-ccw" size={18} color={isSandalwood || isArabesqueWhite ? palette.destructive : palette.primaryBright} /></Pressable></View>
          </View>
              </View> : <SecondaryTab tab={activeTab} palette={palette} appState={appState} todayCount={todayCount} weekCount={weekCount} totalCount={totalCount} historyGroupKey={historyGroupKey} onHistoryGroupChange={setHistoryGroupKey} onChooseDhikr={chooseDhikr} onAddDhikr={() => openDhikrEditor()} onEditDhikr={openDhikrEditor} onDeleteDhikr={setDeleteDhikrId} />}
         <TabBar activeTab={activeTab} palette={palette} onChange={(tab) => { if (tab !== 'history') setHistoryGroupKey(null); setActiveTab(tab); }} bottomInset={insets.bottom} />
@@ -426,11 +431,12 @@ export default function HomeScreen() {
   );
 }
 
-function HardwareCounter({ count, width, palette, counterImage, sandalwood, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; counterImage: number; sandalwood: boolean; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
+function HardwareCounter({ count, width, palette, counterImage, counterTheme, scale, pressed, completionFlash, disabled, onPress, onPressIn, onPressOut }: { count: number; width: number; palette: Palette; counterImage: number; counterTheme: AccentTheme; scale: Animated.Value; pressed: boolean; completionFlash: boolean; disabled: boolean; onPress: () => void; onPressIn: () => void; onPressOut: () => void }) {
   const display = String(count).padStart(3, '0');
   const lcdFontSize = getLcdFontSize(count);
+  const materialTheme = counterTheme === 'sandalwood' || counterTheme === 'arabesque-white';
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
-    <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : sandalwood ? 0.18 : 0.4 }]} />
+    <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : materialTheme ? 0.18 : 0.4 }]} />
     <Image source={counterImage} resizeMode="contain" style={styles.hardwareImage} />
       <View testID="counter-display" accessible accessibilityRole="text" accessibilityLabel="Current count" accessibilityLiveRegion="polite" accessibilityValue={{ text: display }} style={styles.liveDisplay}>
         <Animated.Text accessible={false} importantForAccessibility="no" style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
@@ -440,10 +446,11 @@ function HardwareCounter({ count, width, palette, counterImage, sandalwood, scal
   </View>;
 }
 
-function CounterAtmosphere({ dark, accent, sandalwood = false }: { dark: boolean; accent: string; sandalwood?: boolean }) {
+function CounterAtmosphere({ dark, accent, sandalwood = false, arabesqueWhite = false }: { dark: boolean; accent: string; sandalwood?: boolean; arabesqueWhite?: boolean }) {
   return <View pointerEvents="none" style={styles.counterAtmosphere}>
-    {dark ? <Image source={CINEMATIC_BACKGROUND} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#f1ece7', '#d8d0c8', '#efe9e4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
-    <View style={{ position: 'absolute', width: 320, height: 420, borderRadius: 160, top: 165, alignSelf: 'center', backgroundColor: accent, opacity: sandalwood ? dark ? 0.055 : 0.035 : dark ? 0.08 : 0.045, shadowColor: accent, shadowOpacity: sandalwood ? 0.32 : 0.48, shadowRadius: 50, elevation: 2 }} />
+    {arabesqueWhite ? <Image source={ARABESQUE_BACKGROUND} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : dark ? <Image source={CINEMATIC_BACKGROUND} resizeMode="stretch" style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#f1ece7', '#d8d0c8', '#efe9e4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
+    {arabesqueWhite ? <LinearGradient colors={dark ? ['rgba(34, 23, 15, 0.34)', 'rgba(255, 250, 239, 0.06)', 'rgba(34, 23, 15, 0.25)'] : ['rgba(255, 253, 247, 0.12)', 'rgba(255, 253, 247, 0.02)', 'rgba(255, 253, 247, 0.18)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
+    <View style={{ position: 'absolute', width: 320, height: 420, borderRadius: 160, top: 165, alignSelf: 'center', backgroundColor: accent, opacity: sandalwood || arabesqueWhite ? dark ? 0.055 : 0.035 : dark ? 0.08 : 0.045, shadowColor: accent, shadowOpacity: sandalwood || arabesqueWhite ? 0.32 : 0.48, shadowRadius: 50, elevation: 2 }} />
     <LinearGradient colors={dark ? ['rgba(5, 5, 5, 0.36)', 'rgba(5, 5, 5, 0.03)', 'rgba(5, 5, 5, 0.58)'] : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)', 'rgba(30,20,16,0.08)']} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} />
     <View style={[styles.atmosphereVignette, { borderColor: dark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(55, 39, 30, 0.08)' }]} />
   </View>;
@@ -508,7 +515,7 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikrs';
   const subtitle = isLibrary ? 'Add, manage and remember.\nKeep your heart connected.' : tab === 'history' ? 'Your recent remembrance sessions' : 'A quiet view of your progress';
   return <View style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-     <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={appState.accentTheme === 'sandalwood'} />
+     <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={appState.accentTheme === 'sandalwood'} arabesqueWhite={appState.accentTheme === 'arabesque-white'} />
     <ScrollView style={{ zIndex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: secondarySafeTop + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
       <View style={[styles.secondaryHeader, { borderBottomWidth: 1, borderBottomColor: palette.border, paddingBottom: 16, marginBottom: 20 }]}>
         <Text style={[styles.secondaryTitle, isLibrary && { fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 38, fontWeight: '400', letterSpacing: -0.8 }, { color: palette.foreground }]}>{title}</Text>
@@ -521,7 +528,7 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
         </View>
         : <View>
           <Pressable testID="add-dhikr" accessibilityRole="button" accessibilityLabel="Add Dhikr" onPress={onAddDhikr} style={({ pressed }) => [styles.plusButton, styles.premiumPrimaryButton, { alignSelf: 'flex-end', backgroundColor: palette.primary, borderColor: palette.primaryBright, width: 158, height: 50, borderRadius: 28, marginBottom: 16, shadowColor: palette.primary, shadowOpacity: 0.42, shadowRadius: 16, elevation: 8 }, pressed && styles.pressed]}><Feather name="plus" size={20} color={palette.primaryForeground} /><Text style={[styles.plusText, { color: palette.primaryForeground, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 16 }]}>Add Dhikr</Text></Pressable>
-           {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your Dhikr Library is Empty" body="Add your first Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, styles.premiumLibraryRow, { minHeight: 92, borderRadius: 22, paddingHorizontal: 13, backgroundColor: appState.accentTheme === 'sandalwood' ? 'rgba(42, 27, 19, 0.92)' : 'rgba(25, 22, 21, 0.9)', borderColor: palette.border, shadowColor: palette.primary, shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 6 }]}>
+           {appState.dhikrs.length === 0 ? <EmptyPanel icon="bookmark" title="Your Dhikr Library is Empty" body="Add your first Dhikr to begin counting." palette={palette} /> : appState.dhikrs.map((item) => <View key={item.id} testID={`dhikr-row-${item.id}`} style={[styles.libraryRow, styles.premiumLibraryRow, { minHeight: 92, borderRadius: 22, paddingHorizontal: 13, backgroundColor: appState.accentTheme === 'sandalwood' ? 'rgba(42, 27, 19, 0.92)' : appState.accentTheme === 'arabesque-white' ? 'rgba(255, 253, 247, 0.9)' : 'rgba(25, 22, 21, 0.9)', borderColor: palette.border, shadowColor: palette.primary, shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 6 }]}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Select ${item.name}`} onPress={() => onChooseDhikr(item.id)} style={[styles.librarySelect, { minHeight: 78 }]}>
               <DhikrMark palette={palette} size={56} />
               <View style={[styles.historyCopy, { paddingLeft: 14 }]}><Text style={[styles.historyName, { color: palette.foreground, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 18 }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.libraryTarget, { color: palette.muted, fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 13, marginTop: 5 }]}>Target: {appState.targets[item.id] ? appState.targets[item.id] : 'Not set'}</Text></View>
@@ -539,7 +546,7 @@ function IconButton({ icon, label, onPress, palette, accent = false }: { icon: k
 function SettingsModal({ visible, appState, palette, topInset, bottomInset, onClose, onChange }: { visible: boolean; appState: AppState; palette: Palette; topInset: number; bottomInset: number; onClose: () => void; onChange: <Key extends keyof AppState>(key: Key, value: AppState[Key]) => void }) {
   return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
     <View style={[styles.settingsRoot, { backgroundColor: palette.background, paddingTop: topInset + 12, paddingBottom: Math.max(bottomInset, 18) }]}>
-      <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={appState.accentTheme === 'sandalwood'} />
+      <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={appState.accentTheme === 'sandalwood'} arabesqueWhite={appState.accentTheme === 'arabesque-white'} />
       <View style={themeStyles.settingsLayer}>
         <View style={styles.settingsHeader}><View><Text style={[styles.sheetTitle, { color: palette.foreground }]}>Settings</Text><Text style={[styles.sheetSubtitle, { color: palette.muted }]}>Make the practice feel like yours</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close settings" onPress={onClose} style={[styles.closeButton, { backgroundColor: palette.surface }]}><Feather name="x" size={19} color={palette.foreground} /></Pressable></View>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.settingsScroll}>
@@ -571,6 +578,7 @@ function AccentThemePicker({ value, onChange, palette }: { value: AccentTheme; o
     { id: 'green', label: 'Jannah Green', color: colors.accents.green.primaryBright },
     { id: 'blue', label: 'Ocean Blue', color: colors.accents.blue.primaryBright },
     { id: 'sandalwood', label: 'Sandalwood Classic', color: colors.accents.sandalwood.primaryBright, image: COUNTER_IMAGES.sandalwood },
+    { id: 'arabesque-white', label: 'Arabesque White', color: colors.accents['arabesque-white'].primaryBright, image: COUNTER_IMAGES['arabesque-white'] },
   ];
     return <View style={{ paddingVertical: 14 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}><View style={[styles.settingIcon, { backgroundColor: palette.primary }]}><Feather name="droplet" size={17} color={palette.primaryForeground} /></View><View><Text style={[styles.settingLabel, { color: palette.foreground }]}>Visual theme</Text><Text style={[styles.settingHint, { color: palette.muted }]}>Choose an accent, glow and atmosphere</Text></View></View>
