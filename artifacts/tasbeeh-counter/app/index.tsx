@@ -435,14 +435,25 @@ function HardwareCounter({ count, width, palette, counterImage, counterTheme, sc
   const display = String(count).padStart(3, '0');
   const lcdFontSize = getLcdFontSize(count);
   const materialTheme = counterTheme === 'sandalwood' || counterTheme === 'arabesque-white';
+  const pressDepth = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (typeof Animated.spring === 'function') {
+      Animated.spring(pressDepth, { toValue: pressed ? 1 : 0, friction: 8, tension: 220, useNativeDriver: true }).start();
+    } else {
+      pressDepth.setValue(pressed ? 1 : 0);
+    }
+  }, [pressed, pressDepth]);
+  const buttonScale = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
+  const buttonTranslateY = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [0, 5] });
+  const AnimatedDialSurface = Animated.View ?? View;
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
     <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : materialTheme ? 0.18 : 0.4 }]} />
     <Image source={counterImage} resizeMode="contain" style={styles.hardwareImage} />
       <View testID="counter-display" accessible accessibilityRole="text" accessibilityLabel="Current count" accessibilityLiveRegion="polite" accessibilityValue={{ text: display }} style={styles.liveDisplay}>
         <Animated.Text accessible={false} importantForAccessibility="no" style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <View pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed, pressed && { transform: [{ scale: 0.96 }] }]} />
-    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, pressed && styles.dialPressed, pressed && { transform: [{ scale: 0.95 }] }]} />
+    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, pressed && styles.dialSurfacePressed, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
+    <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} style={[styles.dialHitArea, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
   </View>;
 }
 
