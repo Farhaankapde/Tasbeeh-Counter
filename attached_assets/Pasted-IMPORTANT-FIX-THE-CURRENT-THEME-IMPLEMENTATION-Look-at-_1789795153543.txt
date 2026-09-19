@@ -1,0 +1,282 @@
+IMPORTANT — FIX THE CURRENT THEME IMPLEMENTATION
+
+Look at the current Tasbeeh screen and compare it with the original/default Tasbeeh screen.
+
+The current theme implementation has a major sizing/layout problem: the physical tasbeeh counter has become MUCH TOO SMALL.
+
+DO NOT redesign the screen.
+
+DO NOT change the existing layout.
+
+DO NOT change the positions of the existing major sections.
+
+The theme must use the EXACT SAME COUNTER SIZE, POSITION, AND PROPORTIONS as the existing/default theme.
+
+--------------------------------------------------
+1. RESTORE THE COUNTER SIZE
+--------------------------------------------------
+
+The central physical tasbeeh counter must be approximately the SAME SIZE as it is in the original app.
+
+It should be the dominant visual element in the center of the screen.
+
+Current problem:
+The counter is tiny and occupies only a small portion of the center.
+
+Fix:
+Scale the physical counter UP significantly so that it matches the dimensions of the counter in the existing themes.
+
+The counter should:
+
+• Start around the same vertical position as the existing counter
+• Have approximately the same width
+• Have approximately the same height
+• Occupy approximately the same central screen area
+• Keep the same visual prominence as the other themes
+
+Do NOT use a small floating-device/card treatment.
+
+It should look like the main physical tasbeeh device of the application.
+
+--------------------------------------------------
+2. COUNTER NUMBER MUST BE INSIDE THE LCD
+--------------------------------------------------
+
+There is currently a problem where the number:
+
+034
+
+is appearing ABOVE / OUTSIDE the LCD display.
+
+This is incorrect.
+
+The count must be rendered ONLY inside the counter's LCD display.
+
+For example:
+
+┌─────────────────────┐
+│                     │
+│        034          │
+│                     │
+└─────────────────────┘
+
+The number must be centered vertically and horizontally inside the LCD.
+
+Remove any duplicate/floating counter number outside the LCD.
+
+There must be ONE count value only.
+
+The actual application count/state must drive this number.
+
+Do NOT hardcode 034.
+
+If the current count is 34, display:
+
+034
+
+If the current count is 100, display:
+
+100
+
+If the existing app uses a different number formatting rule, preserve that existing behavior.
+
+--------------------------------------------------
+3. PRESERVE THE ORIGINAL COUNTER STRUCTURE
+--------------------------------------------------
+
+The physical counter should retain the same basic structure as the current app:
+
+• LCD display at the top
+• Large physical circular button below
+• Side button/details if present
+• Rounded physical body
+• Centered alignment
+• Same overall proportions
+
+Only change the MATERIAL / VISUAL APPEARANCE for the selected theme.
+
+For Arabesque White, use:
+
+• White/ivory marble body
+• Subtle natural marble veins
+• Fine Islamic Arabesque patterns
+• Antique-gold borders
+• Brushed gold circular button
+• Elegant gold detailing
+
+For Sandalwood Classic, use:
+
+• Premium walnut/rosewood body
+• Natural wood grain
+• Brushed gold button
+
+The physical dimensions must remain consistent across themes.
+
+--------------------------------------------------
+4. DO NOT SHRINK THE COUNTER TO FIT THE BACKGROUND
+--------------------------------------------------
+
+The background image/theme must adapt to the counter.
+
+Do NOT shrink the counter because of the background.
+
+The counter is the primary UI component.
+
+The background should sit BEHIND the counter.
+
+Think of it as:
+
+BACKGROUND
+    ↓
+MAIN TASBEEH COUNTER
+    ↓
+UI CONTROLS
+
+Not:
+
+BACKGROUND
+    ↓
+tiny decorative counter
+
+--------------------------------------------------
+5. PRESERVE THE CURRENT SCREEN LAYOUT
+--------------------------------------------------
+
+Keep these elements in their existing positions:
+
+• Tasbeeh title
+• Settings icon
+• Dhikr selector
+• Central counter
+• Quran quote
+• Reset button
+• Bottom navigation
+
+Do not move the bottom navigation.
+
+Do not move the quote.
+
+Do not move the Dhikr selector.
+
+Do not introduce a new dashboard layout.
+
+--------------------------------------------------
+6. MATCH THE ORIGINAL COUNTER SCALE
+--------------------------------------------------
+
+Use the existing/default theme as the SOURCE OF TRUTH for dimensions.
+
+Do not estimate a new size.
+
+Inspect the existing counter component/style and reuse its:
+
+• Width
+• Height
+• Position
+• Border radius
+• LCD dimensions
+• Button dimensions
+• Spacing
+• Responsive scaling
+
+Then apply ONLY the new theme styling/material.
+
+This is very important.
+
+The theme system should change:
+
+COLORS
+MATERIALS
+BACKGROUND
+TEXT STYLING
+DECORATIVE DETAILS
+LIGHTING
+
+It should NOT change:
+
+LAYOUT
+DIMENSIONS
+SPACING
+COUNTER SCALE
+FUNCTIONALITY
+
+--------------------------------------------------
+7. REMOVE THE UNNECESSARY GLASS BOX
+--------------------------------------------------
+
+The current screenshot shows a translucent rectangular/glass container around the small counter.
+
+Remove this treatment.
+
+The physical tasbeeh itself should be the main object.
+
+Do not place the counter inside another floating glass card.
+
+--------------------------------------------------
+8. COUNTER SHOULD LOOK PHOTOREALISTIC
+--------------------------------------------------
+
+For the theme, make the counter look like a premium physical device:
+
+Arabesque White:
+
+• Ivory marble
+• Subtle gold marble veins
+• Intricate but restrained Islamic ornamentation
+• Antique gold metal
+• Realistic reflections
+• Realistic shadows
+• Premium tactile finish
+
+Sandalwood Classic:
+
+• Rich walnut wood
+• Natural grain
+• Brass/gold button
+• Subtle reflections
+• Premium handcrafted appearance
+
+The material changes should NOT affect the dimensions.
+
+--------------------------------------------------
+9. RESPONSIVE BEHAVIOR
+--------------------------------------------------
+
+Make sure the counter scales responsively according to the existing app layout.
+
+Do not use fixed dimensions that make it tiny on mobile.
+
+Use the same responsive sizing approach already used by the original counter.
+
+Test on the same mobile viewport where the current app is being previewed.
+
+--------------------------------------------------
+10. FINAL CHECK
+--------------------------------------------------
+
+Before finishing, compare the themed screen against the original screen.
+
+Verify:
+
+✓ Counter is approximately the same size
+✓ Counter occupies the same central area
+✓ LCD is the same relative size
+✓ Physical button is the same relative size
+✓ Counter is centered
+✓ Count appears ONLY inside LCD
+✓ No duplicate count exists
+✓ No floating glass box around counter
+✓ Dhikr selector remains in the same position
+✓ Quote remains in the same position
+✓ Reset remains in the same position
+✓ Bottom navigation remains unchanged
+✓ Existing functionality remains unchanged
+✓ Existing themes remain unchanged
+
+THE GOLDEN RULE:
+
+THEME = VISUAL SKIN ONLY.
+
+Do not let the new theme change the existing app's layout, component dimensions, counter scale, spacing, or functionality.
+
+Use the original/default counter dimensions as the source of truth and apply the new visual material on top of it.
