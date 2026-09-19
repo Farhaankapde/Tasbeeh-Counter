@@ -453,8 +453,7 @@ function HardwareCounter({ count, width, palette, counterImage, counterTheme, sc
       <View testID="counter-display" accessible accessibilityRole="text" accessibilityLabel="Current count" accessibilityLiveRegion="polite" accessibilityValue={{ text: display }} style={styles.liveDisplay}>
         <Animated.Text accessible={false} importantForAccessibility="no" style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
-    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { top: '52%', height: '30%', backgroundColor: 'rgba(0,0,0,0.24)', borderColor: 'rgba(0,0,0,0.34)', opacity: pressDepth, transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
+    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { left: '29%', top: '44%', width: '42%', height: '20%', backgroundColor: 'rgba(0,0,0,0.24)', borderColor: 'rgba(0,0,0,0.34)', opacity: pressDepth, transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
     <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={() => { onPressIn(); animatePressDown(); }} onPressOut={() => { onPressOut(); animatePressUp(); }} style={[styles.dialHitArea, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
   </View>;
 }
