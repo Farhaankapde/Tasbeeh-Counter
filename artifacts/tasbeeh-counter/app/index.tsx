@@ -532,13 +532,13 @@ function SecondaryTab({ tab, palette, appState, todayCount, weekCount, totalCoun
   const secondarySafeTop = Platform.OS === 'ios' ? Math.max(insets.top, 52) : Platform.OS === 'android' ? Math.max(insets.top, 24) : Math.max(insets.top, 18);
   const isLibrary = tab === 'dhikrs';
   const title = tab === 'history' ? 'History' : tab === 'stats' ? 'Statistics' : 'Dhikrs';
-  const subtitle = isLibrary ? 'Add, manage and remember.\nKeep your heart connected.' : tab === 'history' ? 'Your recent remembrance sessions' : 'A quiet view of your progress';
+  const subtitle = tab === 'history' ? 'Your recent remembrance sessions' : 'A quiet view of your progress';
   return <View style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
      <CounterAtmosphere dark={appState.theme !== 'light'} accent={palette.primaryBright} sandalwood={appState.accentTheme === 'sandalwood'} arabesqueWhite={appState.accentTheme === 'arabesque-white'} />
     <ScrollView style={{ zIndex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.secondaryContent, { paddingTop: secondarySafeTop + 18, paddingBottom: 110 + Math.max(insets.bottom, 14) }]}>
       <View style={[styles.secondaryHeader, { borderBottomWidth: 1, borderBottomColor: palette.border, paddingBottom: 16, marginBottom: 20 }]}>
         <Text style={[styles.secondaryTitle, isLibrary && { fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 38, fontWeight: '400', letterSpacing: -0.8 }, { color: palette.foreground }]}>{title}</Text>
-        <Text style={[styles.secondarySubtitle, isLibrary && { fontFamily: Platform.OS === 'android' ? 'serif' : 'Georgia', fontSize: 15, lineHeight: 21 }, { color: palette.muted }]}>{subtitle}</Text>
+         {!isLibrary ? <Text style={[styles.secondarySubtitle, { color: palette.muted }]}>{subtitle}</Text> : null}
       </View>
        {tab === 'history' ? <HistorySection appState={appState} palette={palette} selectedGroupKey={historyGroupKey} onSelectedGroupKeyChange={onHistoryGroupChange} />
         : tab === 'stats' ? <View>
