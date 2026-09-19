@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const appSource = readFileSync(new URL('../app/index.tsx', import.meta.url), 'utf8');
+const layoutSource = readFileSync(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
 
 test('counter screen remains fixed and does not introduce a scrolling container', () => {
   const counterStart = appSource.indexOf("{activeTab === 'counter' ?");
@@ -24,6 +25,10 @@ test('persisted state controls are hydration-gated', () => {
   assert.match(appSource, /if \(!hydrated\) return;/);
   assert.match(appSource, /PERSISTENCE_READ_TIMEOUT_MS/);
   assert.match(appSource, /withTimeout\(retryAsync/);
+});
+
+test('Android disables the keyboard provider event layer that can intercept root touches', () => {
+  assert.match(layoutSource, /<KeyboardProvider enabled=\{Platform\.OS !== 'android'\}>/);
 });
 
 test('Arabesque White keeps one shared hardware counter overlay and aligned assets', () => {
