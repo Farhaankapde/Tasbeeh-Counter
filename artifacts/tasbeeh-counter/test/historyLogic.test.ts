@@ -105,10 +105,12 @@ mock.module('expo-audio', {
     setAudioModeAsync: async () => undefined,
     useAudioPlayer: () => ({
       isLoaded: true,
+      currentTime: 0,
       volume: 1,
       seekTo: async () => undefined,
       play: () => undefined,
     }),
+    useAudioPlayerStatus: (player: { isLoaded: boolean }) => ({ isLoaded: player.isLoaded }),
   },
 });
 mock.module('expo-haptics', {

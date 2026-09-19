@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState as NativeAppState, Animated, BackHandler, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -82,9 +82,12 @@ export default function HomeScreen() {
   const prefetchedAssetUris = useRef(new Set<string>());
   const scale = useRef(new Animated.Value(1)).current;
   const progressAnimation = useRef(new Animated.Value(0)).current;
-  const tapSound = useAudioPlayer(require('../assets/sounds/tap.wav'));
-  const completionSound = useAudioPlayer(require('../assets/sounds/completion.wav'));
+  const tapSound = useAudioPlayer(require('../assets/sounds/tap.wav'), { downloadFirst: true });
+  const completionSound = useAudioPlayer(require('../assets/sounds/completion.wav'), { downloadFirst: true });
+  const tapSoundStatus = useAudioPlayerStatus(tapSound);
+  const completionSoundStatus = useAudioPlayerStatus(completionSound);
   const webAudio = useRef<AudioContext | null>(null);
+  const queuedTapSounds = useRef(0);
   const storagePersister = useRef(createLatestStatePersister<AppState>((state) => retryAsync(
     () => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)),
     { attempts: 3, delayMs: 75 },
@@ -242,9 +245,22 @@ export default function HomeScreen() {
     }).start();
   }, [progressAnimation, targetProgress]);
 
-  const playClick = async () => {
-    if (tapSound.isLoaded) {
-      try { await tapSound.seekTo(0); tapSound.play(); return; } catch { /* use web oscillator */ }
+  const playNativeSound = (player: typeof tapSound) => {
+    if (!player.isLoaded) return false;
+    try {
+      player.currentTime = 0;
+      player.play();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const playClick = () => {
+    if (playNativeSound(tapSound)) return;
+    if (Platform.OS !== 'web') {
+      queuedTapSounds.current = Math.min(queuedTapSounds.current + 1, 4);
+      return;
     }
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
@@ -262,10 +278,8 @@ export default function HomeScreen() {
     }
   };
 
-  const playCompletion = async () => {
-    if (completionSound.isLoaded) {
-      try { await completionSound.seekTo(0); completionSound.play(); return; } catch { /* use web oscillator */ }
-    }
+  const playCompletion = () => {
+    if (playNativeSound(completionSound)) return;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
         const AudioCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -287,6 +301,22 @@ export default function HomeScreen() {
       } catch { /* completion feedback never blocks counting */ }
     }
   };
+
+  useEffect(() => {
+    if (!tapSoundStatus.isLoaded || queuedTapSounds.current === 0) return;
+    const queued = queuedTapSounds.current;
+    queuedTapSounds.current = 0;
+    let cancelled = false;
+    const playQueuedTaps = async () => {
+      for (let index = 0; index < queued; index += 1) {
+        if (cancelled) return;
+        playNativeSound(tapSound);
+        if (index < queued - 1) await new Promise<void>((resolve) => setTimeout(resolve, 35));
+      }
+    };
+    void playQueuedTaps();
+    return () => { cancelled = true; };
+  }, [tapSound, tapSoundStatus.isLoaded]);
 
   const increment = () => {
     const previous = appStateRef.current;

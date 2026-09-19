@@ -27,3 +27,9 @@ test('Arabesque White keeps one shared hardware counter overlay and aligned asse
   assert.match(appSource, /counter-dial-arabesque-white-aligned\.webp/);
   assert.equal((appSource.match(/testID="counter-display"/g) ?? []).length, 1);
 });
+
+test('click audio preloads and restarts without an awaited seek on every tap', () => {
+  assert.match(appSource, /useAudioPlayer\(require\('\.\.\/assets\/sounds\/tap\.wav'\), \{ downloadFirst: true \}\)/);
+  assert.match(appSource, /player\.currentTime = 0/);
+  assert.match(appSource, /queuedTapSounds/);
+});
