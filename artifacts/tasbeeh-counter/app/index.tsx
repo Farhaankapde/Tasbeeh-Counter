@@ -22,6 +22,13 @@ const COUNTER_IMAGES: Record<AccentTheme, number> = {
   sandalwood: require('../assets/images/realistic-counter-sandalwood.png'),
   'arabesque-white': require('../assets/images/realistic-counter-arabesque-white-aligned.png'),
 };
+const DIAL_IMAGES: Record<AccentTheme, number> = {
+  red: require('../assets/images/counter-dial-polished.png'),
+  green: require('../assets/images/counter-dial-green.png'),
+  blue: require('../assets/images/counter-dial-blue.png'),
+  sandalwood: require('../assets/images/counter-dial-sandalwood.png'),
+  'arabesque-white': require('../assets/images/counter-dial-arabesque-white-aligned.png'),
+};
 const CINEMATIC_BACKGROUND = require('../assets/images/tasbeeh-cinematic-background.png');
 const ARABESQUE_BACKGROUND = require('../assets/images/arabesque-white-background.png');
 const LEGACY_DHIKRS: Dhikr[] = [
@@ -446,14 +453,14 @@ function HardwareCounter({ count, width, palette, counterImage, counterTheme, sc
   };
   const buttonScale = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
   const buttonTranslateY = pressDepth.interpolate({ inputRange: [0, 1], outputRange: [0, 5] });
-  const AnimatedDialSurface = Animated.View ?? View;
+  const AnimatedDialImage = Animated.Image ?? Image;
   return <View style={[styles.hardware, styles.hardwarePremium, { width, height: width * 1.38, overflow: 'visible', shadowColor: '#000', shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }]}>
     <Image source={counterImage} blurRadius={12} tintColor={palette.primaryBright} resizeMode="contain" style={[styles.hardwareImage, { width: '108%', height: '108%', left: '-4%', top: '-4%', opacity: completionFlash ? 0.68 : materialTheme ? 0.18 : 0.4 }]} />
     <Image source={counterImage} resizeMode="contain" style={styles.hardwareImage} />
+    <AnimatedDialImage source={DIAL_IMAGES[counterTheme]} resizeMode="contain" style={[styles.hardwareImage, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
       <View testID="counter-display" accessible accessibilityRole="text" accessibilityLabel="Current count" accessibilityLiveRegion="polite" accessibilityValue={{ text: display }} style={styles.liveDisplay}>
         <Animated.Text accessible={false} importantForAccessibility="no" style={[styles.hardwareDigits, { fontSize: lcdFontSize, transform: [{ scale }] }]}>{display}</Animated.Text>
     </View>
-    <AnimatedDialSurface pointerEvents="none" style={[styles.dialSurface, { left: '29%', top: '44%', width: '42%', height: '20%', backgroundColor: 'rgba(0,0,0,0.24)', borderColor: 'rgba(0,0,0,0.34)', opacity: pressDepth, transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
     <Pressable testID="tasbeeh-button" accessibilityRole="button" accessibilityLabel="Increment count" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={() => { onPressIn(); animatePressDown(); }} onPressOut={() => { onPressOut(); animatePressUp(); }} style={[styles.dialHitArea, { transform: [{ scale: buttonScale }, { translateY: buttonTranslateY }] }]} />
   </View>;
 }
