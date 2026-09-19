@@ -74,7 +74,7 @@ export default function HomeScreen() {
   const [appState, setAppState] = useState<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
   const [persistenceWarning, setPersistenceWarning] = useState<string | null>(null);
-  const [counterAssetsReady, setCounterAssetsReady] = useState(false);
+  const [counterAssetsReady, setCounterAssetsReady] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('counter');
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -235,7 +235,6 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let active = true;
-    setCounterAssetsReady(false);
     void prefetchThemeAssets(appState.accentTheme).finally(() => {
       if (active) setCounterAssetsReady(true);
     });

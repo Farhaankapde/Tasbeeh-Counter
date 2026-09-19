@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -9,10 +9,16 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
+const FONT_LOAD_TIMEOUT_MS = 1500;
 const queryClient = new QueryClient();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
-  useEffect(() => { if (fontsLoaded || fontError) void SplashScreen.hideAsync(); }, [fontsLoaded, fontError]);
-  if (!fontsLoaded && !fontError) return null;
+  const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setFontLoadTimedOut(true), FONT_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, []);
+  useEffect(() => { if (fontsLoaded || fontError || fontLoadTimedOut) void SplashScreen.hideAsync(); }, [fontLoadTimedOut, fontsLoaded, fontError]);
+  if (!fontsLoaded && !fontError && !fontLoadTimedOut) return null;
   return <SafeAreaProvider><ErrorBoundary><QueryClientProvider client={queryClient}><GestureHandlerRootView style={{ flex: 1 }}><KeyboardProvider enabled={Platform.OS !== 'android'}><Stack screenOptions={{ headerShown: false }} /></KeyboardProvider></GestureHandlerRootView></QueryClientProvider></ErrorBoundary></SafeAreaProvider>;
 }

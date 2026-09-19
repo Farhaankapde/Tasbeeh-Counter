@@ -31,6 +31,13 @@ test('Android disables the keyboard provider event layer that can intercept root
   assert.match(layoutSource, /<KeyboardProvider enabled=\{Platform\.OS !== 'android'\}>/);
 });
 
+test('first launch cannot remain blocked by font or bundled asset loading', () => {
+  assert.match(layoutSource, /FONT_LOAD_TIMEOUT_MS/);
+  assert.match(layoutSource, /fontLoadTimedOut/);
+  assert.match(appSource, /useState\(true\)/);
+  assert.doesNotMatch(appSource, /setCounterAssetsReady\(false\)/);
+});
+
 test('Arabesque White keeps one shared hardware counter overlay and aligned assets', () => {
   assert.match(appSource, /realistic-counter-arabesque-white-aligned\.webp/);
   assert.match(appSource, /counter-dial-arabesque-white-aligned\.webp/);
