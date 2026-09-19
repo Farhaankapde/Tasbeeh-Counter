@@ -3,6 +3,7 @@ import { AppState as NativeAppState, Animated, BackHandler, Easing, Image, Modal
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
