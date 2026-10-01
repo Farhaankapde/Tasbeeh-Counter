@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 const appSource = readFileSync(new URL('../app/index.tsx', import.meta.url), 'utf8');
 const layoutSource = readFileSync(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
+const keyboardControllerAndroidPatch = readFileSync(new URL('../../../patches/react-native-keyboard-controller@1.21.9.patch', import.meta.url), 'utf8');
 
 test('counter screen remains fixed and does not introduce a scrolling container', () => {
   const counterStart = appSource.indexOf("{activeTab === 'counter' ?");
@@ -27,8 +28,22 @@ test('persisted state controls are hydration-gated', () => {
   assert.match(appSource, /withTimeout\(retryAsync/);
 });
 
-test('Android disables the keyboard provider event layer that can intercept root touches', () => {
-  assert.match(layoutSource, /<KeyboardProvider enabled=\{Platform\.OS !== 'android'\}>/);
+test('Android keyboard event view passes touches through without disabling keyboard handling', () => {
+  assert.match(layoutSource, /<KeyboardProvider>/);
+  assert.match(keyboardControllerAndroidPatch, /pointerEvents = PointerEvents\.NONE/);
+});
+
+test('counter taps reach increment through an enabled accessible Pressable', () => {
+  assert.match(appSource, /testID="tasbeeh-button"[^>]*accessibilityRole="button"/);
+  assert.match(appSource, /disabled=\{disabled\} onPress=\{onPress\}/);
+  assert.match(appSource, /onPress=\{increment\}/);
+  assert.match(appSource, /lifetimeCount: previous\.lifetimeCount \+ 1/);
+});
+
+test('Android Back listener is focused, handles app-owned states, and cleans up', () => {
+  assert.match(appSource, /useFocusEffect\(useCallback\(/);
+  assert.match(appSource, /handleAndroidBack\(/);
+  assert.match(appSource, /return \(\) => subscription\.remove\(\)/);
 });
 
 test('first launch cannot remain blocked by font or bundled asset loading', () => {

@@ -1,0 +1,22 @@
+diff --git a/android/src/main/java/com/reactnativekeyboardcontroller/views/EdgeToEdgeReactViewGroup.kt b/android/src/main/java/com/reactnativekeyboardcontroller/views/EdgeToEdgeReactViewGroup.kt
+--- a/android/src/main/java/com/reactnativekeyboardcontroller/views/EdgeToEdgeReactViewGroup.kt
++++ b/android/src/main/java/com/reactnativekeyboardcontroller/views/EdgeToEdgeReactViewGroup.kt
+@@ -12,6 +12,7 @@
+ import androidx.core.view.WindowInsetsAnimationCompat
+ import androidx.core.view.WindowInsetsCompat
+ import com.facebook.react.uimanager.ThemedReactContext
++import com.facebook.react.uimanager.PointerEvents
+ import com.facebook.react.views.view.ReactViewGroup
+ import com.reactnativekeyboardcontroller.extensions.content
+ import com.reactnativekeyboardcontroller.extensions.removeSelf
+@@ -154,7 +155,9 @@
+     val activity = reactContext.currentActivity
+ 
+     if (activity != null) {
+-      eventView = ReactViewGroup(context)
++      eventView = ReactViewGroup(context).apply {
++        pointerEvents = PointerEvents.NONE
++      }
+       val root = reactContext.content
+       root?.addView(eventView)
+ 

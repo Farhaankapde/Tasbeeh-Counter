@@ -85,6 +85,11 @@ mock.module('react-native', {
     useWindowDimensions: () => ({ width: 400, height: 800, scale: 1, fontScale: 1 }),
   },
 });
+mock.module('expo-router', {
+  namedExports: {
+    useFocusEffect: (effect: React.EffectCallback) => React.useEffect(effect, [effect]),
+  },
+});
 mock.module('react-native-keyboard-controller', {
   namedExports: {
     KeyboardAvoidingView: HostView,

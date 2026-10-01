@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState as NativeAppState, Animated, BackHandler, Easing, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
@@ -11,6 +12,7 @@ import colors from '@/constants/colors';
 import { calculateStats, canAcceptCount, canContinueHistorySession, createLatestStatePersister, getCountFeedback, getLcdFontSize, getLocalDateKey, restoreStoredState, type AccentTheme, type AppState, type DhikrRecord } from '@/lib/counterLogic';
 import { getHistoryDateSection, groupHistoryEntries } from '@/lib/historyLogic';
 import { retryAsync } from '@/lib/persistence';
+import { handleAndroidBack } from '@/lib/androidBackBehavior';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 type Dhikr = DhikrRecord & { icon: keyof typeof MaterialCommunityIcons.glyphMap };
@@ -189,23 +191,6 @@ export default function HomeScreen() {
       if (hydrated) void queuePersist(appStateRef.current);
     };
   }, [hydrated]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (selectorOpen || settingsOpen || resetting || dhikrEditorOpen || deleteDhikrId !== null) return false;
-      if (activeTab === 'history' && historyGroupKey !== null) {
-        setHistoryGroupKey(null);
-        return true;
-      }
-      if (activeTab !== 'counter') {
-        setActiveTab('counter');
-        return true;
-      }
-      return false;
-    });
-    return () => subscription.remove();
-  }, [activeTab, deleteDhikrId, dhikrEditorOpen, historyGroupKey, resetting, selectorOpen, settingsOpen]);
 
   useEffect(() => {
     tapSound.volume = 0.42;
@@ -432,13 +417,32 @@ export default function HomeScreen() {
     setDhikrCustomTargetOpen(Boolean(target));
     setDhikrEditorOpen(true);
   };
-  const closeDhikrEditor = () => {
+  const closeDhikrEditor = useCallback(() => {
     setDhikrEditorOpen(false);
     setEditingDhikrId(null);
     setDhikrNameDraft('');
     setDhikrTargetDraft('');
     setDhikrCustomTargetOpen(false);
-  };
+  }, []);
+  useFocusEffect(useCallback(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => handleAndroidBack(
+      { activeTab, historyGroupKey, selectorOpen, settingsOpen, resetting, dhikrEditorOpen, deleteDhikrId },
+      {
+        closeSelector: () => setSelectorOpen(false),
+        closeSettings: () => setSettingsOpen(false),
+        closeReset: () => setResetting(false),
+        closeDhikrEditor,
+        closeDeleteConfirmation: () => setDeleteDhikrId(null),
+        closeHistoryGroup: () => setHistoryGroupKey(null),
+        returnToCounter: () => {
+          setHistoryGroupKey(null);
+          setActiveTab('counter');
+        },
+      },
+    ));
+    return () => subscription.remove();
+  }, [activeTab, closeDhikrEditor, deleteDhikrId, dhikrEditorOpen, historyGroupKey, resetting, selectorOpen, settingsOpen]));
   const saveDhikr = () => {
     if (!hydrated) return;
     const name = dhikrNameDraft.trim();

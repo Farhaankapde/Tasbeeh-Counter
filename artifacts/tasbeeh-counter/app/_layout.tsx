@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -20,5 +19,5 @@ export default function RootLayout() {
   }, []);
   useEffect(() => { if (fontsLoaded || fontError || fontLoadTimedOut) void SplashScreen.hideAsync(); }, [fontLoadTimedOut, fontsLoaded, fontError]);
   if (!fontsLoaded && !fontError && !fontLoadTimedOut) return null;
-  return <SafeAreaProvider><ErrorBoundary><QueryClientProvider client={queryClient}><GestureHandlerRootView style={{ flex: 1 }}><KeyboardProvider enabled={Platform.OS !== 'android'}><Stack screenOptions={{ headerShown: false }} /></KeyboardProvider></GestureHandlerRootView></QueryClientProvider></ErrorBoundary></SafeAreaProvider>;
+  return <SafeAreaProvider><ErrorBoundary><QueryClientProvider client={queryClient}><GestureHandlerRootView style={{ flex: 1 }}><KeyboardProvider><Stack screenOptions={{ headerShown: false }} /></KeyboardProvider></GestureHandlerRootView></QueryClientProvider></ErrorBoundary></SafeAreaProvider>;
 }

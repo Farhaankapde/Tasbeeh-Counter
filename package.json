@@ -15,5 +15,10 @@
   "devDependencies": {
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "react-native-keyboard-controller@1.21.9": "patches/react-native-keyboard-controller@1.21.9.patch"
+    }
   }
 }
